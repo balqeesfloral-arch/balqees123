@@ -1,0 +1,222 @@
+-- Balqees Floral v10.26 — Individual Order Center
+-- Run after v10.25 checkout SQL.
+-- The website stores official accounting documents; it does NOT issue tax invoices.
+
+create table if not exists public.individual_order_documents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  order_id uuid not null references public.orders(id) on delete cascade,
+  document_type text not null default 'invoice_copy'
+    check (document_type in ('invoice_copy','receipt','credit_note','debit_note','other')),
+  document_number text,
+  title_ar text not null default 'فاتورة رسمية',
+  title_en text,
+  issue_date date,
+  total_amount numeric check (total_amount is null or total_amount >= 0),
+  file_path text not null unique,
+  mime_type text not null default 'application/pdf',
+  file_size integer check (file_size is null or (file_size > 0 and file_size <= 15728640)),
+  source_system text not null default 'external_accounting',
+  status text not null default 'published' check (status in ('draft','published','void')),
+  published_at timestamptz,
+  internal_note text,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists individual_order_documents_order_idx
+  on public.individual_order_documents(order_id, published_at desc, created_at desc);
+create index if not exists individual_order_documents_user_idx
+  on public.individual_order_documents(user_id, published_at desc, created_at desc);
+
+alter table public.individual_order_documents enable row level security;
+
+drop policy if exists individual_order_documents_customer_select on public.individual_order_documents;
+create policy individual_order_documents_customer_select
+on public.individual_order_documents for select to authenticated
+using (
+  user_id = (select auth.uid())
+  and status = 'published'
+  and exists (
+    select 1 from public.orders o
+    where o.id = individual_order_documents.order_id
+      and o.user_id = (select auth.uid())
+      and o.organization_id is null
+  )
+);
+
+drop policy if exists individual_order_documents_admin_select on public.individual_order_documents;
+create policy individual_order_documents_admin_select
+on public.individual_order_documents for select to authenticated
+using (public.is_balqees_admin());
+
+drop policy if exists individual_order_documents_admin_insert on public.individual_order_documents;
+create policy individual_order_documents_admin_insert
+on public.individual_order_documents for insert to authenticated
+with check (public.is_balqees_admin());
+
+drop policy if exists individual_order_documents_admin_update on public.individual_order_documents;
+create policy individual_order_documents_admin_update
+on public.individual_order_documents for update to authenticated
+using (public.is_balqees_admin())
+with check (public.is_balqees_admin());
+
+drop policy if exists individual_order_documents_admin_delete on public.individual_order_documents;
+create policy individual_order_documents_admin_delete
+on public.individual_order_documents for delete to authenticated
+using (public.is_balqees_admin());
+
+grant select, insert, update, delete on public.individual_order_documents to authenticated;
+revoke all on public.individual_order_documents from anon;
+
+create or replace function private.sync_individual_order_document_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid;
+  v_org uuid;
+begin
+  select o.user_id, o.organization_id into v_user, v_org
+  from public.orders o
+  where o.id = new.order_id;
+
+  if v_user is null then raise exception 'ORDER_NOT_FOUND'; end if;
+  if v_org is not null then raise exception 'INDIVIDUAL_ORDER_REQUIRED'; end if;
+
+  new.user_id := v_user;
+  new.updated_at := now();
+  if new.status = 'published' and new.published_at is null then
+    new.published_at := now();
+  elsif new.status <> 'published' then
+    new.published_at := null;
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function private.sync_individual_order_document_owner() from public, anon, authenticated;
+
+drop trigger if exists individual_order_document_sync_owner on public.individual_order_documents;
+create trigger individual_order_document_sync_owner
+before insert or update of order_id, status
+on public.individual_order_documents
+for each row execute function private.sync_individual_order_document_owner();
+
+-- Private storage. Customers only read files attached to their own published document rows.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('individual-order-documents','individual-order-documents',false,15728640,array['application/pdf'])
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists individual_order_documents_storage_select on storage.objects;
+create policy individual_order_documents_storage_select
+on storage.objects for select to authenticated
+using (
+  bucket_id = 'individual-order-documents'
+  and (
+    public.is_balqees_admin()
+    or exists (
+      select 1 from public.individual_order_documents d
+      where d.file_path = name
+        and d.user_id = (select auth.uid())
+        and d.status = 'published'
+    )
+  )
+);
+
+drop policy if exists individual_order_documents_storage_admin_insert on storage.objects;
+create policy individual_order_documents_storage_admin_insert
+on storage.objects for insert to authenticated
+with check (bucket_id = 'individual-order-documents' and public.is_balqees_admin());
+
+drop policy if exists individual_order_documents_storage_admin_update on storage.objects;
+create policy individual_order_documents_storage_admin_update
+on storage.objects for update to authenticated
+using (bucket_id = 'individual-order-documents' and public.is_balqees_admin())
+with check (bucket_id = 'individual-order-documents' and public.is_balqees_admin());
+
+drop policy if exists individual_order_documents_storage_admin_delete on storage.objects;
+create policy individual_order_documents_storage_admin_delete
+on storage.objects for delete to authenticated
+using (bucket_id = 'individual-order-documents' and public.is_balqees_admin());
+
+-- Publishing an official document creates an in-app notification and immutable order activity entry.
+create or replace function private.notify_individual_order_document_published()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_order_number bigint;
+  v_year text;
+  v_ref text;
+begin
+  if new.status <> 'published' then return new; end if;
+  if tg_op = 'UPDATE' and old.status = 'published' then return new; end if;
+
+  select o.order_number into v_order_number
+  from public.orders o
+  where o.id = new.order_id and o.user_id = new.user_id and o.organization_id is null;
+  if v_order_number is null then return new; end if;
+
+  v_year := extract(year from coalesce(new.published_at, now()) at time zone 'Asia/Riyadh')::int::text;
+  v_ref := 'BLQ-' || v_year || '-' || lpad(v_order_number::text, 5, '0');
+
+  insert into public.notifications(
+    title_ar,title_en,body_ar,body_en,type,audience,user_id,status,published_at,
+    category,priority,action_url,action_label_ar,action_label_en,metadata
+  ) values (
+    'فاتورتك أصبحت جاهزة','Your invoice is ready',
+    'الفاتورة الخاصة بالطلب '||v_ref||' متاحة الآن.',
+    'The official invoice for order '||v_ref||' is now available.',
+    'success','user',new.user_id,'published',now(),
+    'payment','normal',
+    '/account/orders/'||new.order_id::text||'?document='||new.id::text,
+    'عرض الفاتورة','View invoice',
+    jsonb_build_object('order_id',new.order_id,'document_id',new.id,'document_type',new.document_type,'document_number',new.document_number)
+  );
+
+  insert into public.order_events(
+    order_id,event_type,title_ar,title_en,body_ar,body_en,actor_type,metadata
+  ) values (
+    new.order_id,'official_document_ready',
+    'الفاتورة الرسمية أصبحت جاهزة','Official invoice is ready',
+    'تم رفع المستند الرسمي لهذا الطلب وأصبح متاحًا داخل مركز الطلب.',
+    'The official document for this order is now available in the order center.',
+    'admin',
+    jsonb_build_object('document_id',new.id,'document_type',new.document_type,'document_number',new.document_number)
+  );
+  return new;
+end;
+$$;
+
+revoke execute on function private.notify_individual_order_document_published() from public, anon, authenticated;
+
+drop trigger if exists individual_order_document_notify_published on public.individual_order_documents;
+create trigger individual_order_document_notify_published
+after insert or update of status on public.individual_order_documents
+for each row execute function private.notify_individual_order_document_published();
+
+-- Postgres Changes Realtime. This only changes the publication; it does not modify the locked realtime schema.
+do $$
+declare
+  t text;
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    foreach t in array array['orders','order_events','individual_order_documents'] loop
+      if not exists (
+        select 1 from pg_publication_tables
+        where pubname='supabase_realtime' and schemaname='public' and tablename=t
+      ) then
+        execute format('alter publication supabase_realtime add table public.%I', t);
+      end if;
+    end loop;
+  end if;
+end $$;

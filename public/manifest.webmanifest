@@ -1,0 +1,14 @@
+{
+  "name": "بلقيس الورد | Balqees Floral",
+  "short_name": "Balqees",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#eef1eb",
+  "theme_color": "#1d3e30",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

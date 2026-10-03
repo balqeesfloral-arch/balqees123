@@ -1,0 +1,320 @@
+/* ========================================================================== */
+/* v10.45 — Mobile resilience, commerce-first hierarchy & real appearance UI */
+/* ========================================================================== */
+
+/* Never let a single oversized child break the viewport. Horizontal data
+   surfaces keep their own scroll containers instead of widening the page. */
+html,body,#root{max-width:100%;overflow-x:hidden;overflow-x:clip}
+img,video,canvas,svg{max-width:100%}
+.client-app,.client-workspace,.client-content,.client-page,
+.individual-account-app,.individual-page,.smart-store-account{min-width:0;max-width:100%}
+.client-app *,.individual-account-app *,.individual-page *{box-sizing:border-box}
+.client-page :where(section,article,header,div,form,nav,aside),
+.individual-account-app :where(section,article,header,div,form,nav,aside),
+.individual-page :where(section,article,header,div,form,nav,aside){min-width:0}
+.client-page :where(h1,h2,h3,h4,p,strong,small,span,b,label),
+.individual-account-app :where(h1,h2,h3,h4,p,strong,small,span,b,label),
+.individual-page :where(h1,h2,h3,h4,p,strong,small,span,b,label){overflow-wrap:anywhere}
+
+/* -------------------------------------------------------------------------- */
+/* B2B portal: readable type scale                                               */
+/* -------------------------------------------------------------------------- */
+.client-app{font-size:calc(16px * var(--portal-font-scale,1));line-height:1.55}
+/* Global readability floor: page-specific microcopy can no longer fall back to
+   5–8px sizes on dense operational screens. More specific hero/KPI rules below
+   remain free to render larger. */
+.client-app p{font-size:calc(12px * var(--portal-font-scale,1))}
+.client-app small{font-size:calc(10px * var(--portal-font-scale,1))}
+.client-app :where(button,input,select,textarea){font-size:calc(12px * var(--portal-font-scale,1))}
+.client-brand small,.client-org-card small,.client-org-card em,.client-topbar-title small,
+.client-user-chip small,.client-page-head>div:first-child>span,.client-panel>header>div>span,
+.client-hero-copy>span,.client-hero-side small,.portal-settings-nav-title small,
+.portal-settings-policy span,.portal-settings-policy b,.portal-settings-section-head small,
+.portal-settings-actions.end>span,.portal-settings-note,.portal-security-summary small,
+.portal-factor-row small,.portal-session-card small,.portal-activity-list small,
+.portal-device-list small,.portal-integration-card small,
+.client-app .request-steps small,.client-app .request-recent small,
+.client-app .request-service-grid small,.client-app .request-step-head p,
+.client-app .ops-operation-care small,.client-app .ops-operation-care p{
+  font-size:calc(10px * var(--portal-font-scale,1))!important;
+}
+.client-org-card strong,.client-side-foot button,.client-cart-chip,.client-user-chip strong,
+.client-primary,.client-secondary,.client-danger,.client-link,.client-muted,
+.client-panel>header>a,.client-panel>header>button,.client-hero p,
+.portal-settings-nav>button b,.portal-settings-section-head p,.portal-choice>span,
+.portal-choice button,.portal-accent-grid button,.portal-field>span,.portal-field input,
+.portal-field select,.portal-toggle strong,.portal-toggle small,.portal-verified-grid small,
+.portal-verified-grid strong,.portal-change-request strong,.portal-change-request p,
+.portal-notify-matrix header span,.portal-notify-matrix header b,.portal-notify-matrix>div strong,
+.portal-security-summary strong,.portal-factor-row strong,.portal-mfa-enroll strong,
+.portal-mfa-enroll small,.portal-session-card strong,.portal-activity-list strong,
+.portal-device-list strong,.portal-device-list em,.portal-empty,.portal-integration-card strong,
+.portal-integration-card em,.client-app .request-steps b,.client-app .request-recent strong,
+.client-app .request-service-grid strong,.client-app .request-readonly strong,
+.client-app .request-readonly small,.client-app .request-error,
+.client-app .ops-operation-care strong{
+  font-size:calc(12px * var(--portal-font-scale,1))!important;
+}
+.client-nav a{font-size:calc(13px * var(--portal-font-scale,1))!important;min-height:46px}
+.client-topbar-title h1{font-size:calc(20px * var(--portal-font-scale,1))!important}
+.client-page-head h2{font-size:clamp(30px,3vw,39px)!important}
+.client-page-head p{font-size:calc(14px * var(--portal-font-scale,1))!important;max-width:760px}
+.client-panel>header h3{font-size:calc(22px * var(--portal-font-scale,1))!important}
+.portal-settings-section-head h3{font-size:clamp(25px,2.5vw,32px)!important}
+.portal-settings-panel>header h4{font-size:calc(15px * var(--portal-font-scale,1))!important}
+.portal-field input,.portal-field select{min-height:44px}
+.client-primary,.client-secondary,.client-danger,.client-link{min-height:42px;padding-inline:15px}
+
+/* Real density: changes spacing and usable information density portal-wide. */
+.client-app[data-portal-density="compact"]{--portal-space:.86}
+.client-app[data-portal-density="balanced"]{--portal-space:1}
+.client-app[data-portal-density="comfortable"]{--portal-space:1.14}
+.client-app .client-content{padding-top:calc(24px * var(--portal-space,1));padding-bottom:calc(54px * var(--portal-space,1))}
+.client-app .client-panel,.client-app .portal-settings-panel{padding:calc(18px * var(--portal-space,1))}
+.client-app .client-page{gap:calc(12px * var(--portal-space,1))}
+
+/* Real interface styles. */
+.client-app[data-portal-style="calm"]{background:linear-gradient(180deg,#f6f7f3,#eef1eb)}
+.client-app[data-portal-style="calm"] :where(.client-panel,.portal-settings-panel,.ops-card,.request-stage,.team-members,.team-responsibility,.team-policy){box-shadow:none!important}
+.client-app[data-portal-style="luxury"] :where(.client-panel,.portal-settings-panel){box-shadow:0 14px 38px rgba(25,53,38,.06)}
+.client-app[data-portal-style="lively"]{background:radial-gradient(circle at 88% 4%,color-mix(in srgb,var(--portal-accent-soft,#c4ab72) 25%,transparent),transparent 31%),linear-gradient(180deg,#f7f8f3,#eef2ea)}
+.client-app[data-portal-style="lively"] :where(.client-panel,.portal-settings-panel){box-shadow:0 16px 42px rgba(25,53,38,.08)}
+
+/* Real decorations / glass / background-motion controls. */
+.client-app[data-portal-decorations="none"] :where(.client-partnership-scene,.client-garden-leaf,.client-garden-orbit,.ops-orbit,.care-orb,.request-hero:before,.request-hero:after,.client-hero:before){display:none!important}
+.client-app[data-portal-decorations="light"] :where(.client-garden-leaf,.ops-orbit,.care-orb){opacity:.22!important}
+.client-app[data-portal-decorations="rich"] :where(.client-garden-leaf,.ops-orbit,.care-orb){opacity:1!important}
+.client-app[data-portal-glass="light"] :where(.client-topbar,.client-mobile-dock){backdrop-filter:blur(8px)}
+.client-app[data-portal-glass="balanced"] :where(.client-topbar,.client-mobile-dock){backdrop-filter:blur(16px)}
+.client-app[data-portal-glass="clear"] :where(.client-topbar,.client-mobile-dock){backdrop-filter:blur(24px);background-color:rgba(248,250,246,.74)}
+.client-app[data-portal-background-motion="static"] :where(.client-garden-leaf,.client-garden-orbit,.ops-orbit,.ops-pulse-ring b,.care-orb i,.care-orb b){animation:none!important;transform:none!important}
+.client-app[data-portal-background-motion="subtle"] :where(.client-garden-leaf,.client-garden-orbit,.ops-orbit){animation-duration:22s!important}
+.client-app[data-portal-background-motion="full"] :where(.client-garden-leaf,.client-garden-orbit,.ops-orbit){animation-duration:10s!important}
+
+/* Card style is no longer cosmetic-only. */
+.client-app[data-portal-card="flat"] :where(.client-panel,.portal-settings-panel,.ops-card,.request-stage,.team-members,.team-responsibility,.team-policy){border-radius:12px!important;box-shadow:none!important;background:var(--cp-card,#fff)}
+.client-app[data-portal-card="soft"] :where(.client-panel,.portal-settings-panel){border-radius:18px!important}
+.client-app[data-portal-card="glass"] :where(.client-panel,.portal-settings-panel,.request-stage){background:color-mix(in srgb,var(--cp-card,#fff) 78%,transparent)!important;backdrop-filter:blur(var(--portal-glass-blur,16px))}
+
+/* Commerce-first hierarchy: keep one expressive dashboard hero; secondary portal
+   pages use compact functional intros instead of repeated oversized heroes. */
+.client-app :where(.ops-hero,.request-hero,.team-hero,.care-hero,.living-contract-hero,.site-detail-hero){
+  min-height:0!important;border-radius:17px!important;padding:18px 20px!important;margin-bottom:14px!important;
+  box-shadow:0 8px 26px rgba(26,53,38,.055)!important;
+}
+.client-app :where(.ops-hero,.request-hero,.team-hero,.care-hero){background:linear-gradient(135deg,#f9fbf7,#eef3eb)!important;color:var(--cp-ink)!important;border:1px solid var(--cp-line)!important}
+.client-app :where(.ops-hero,.request-hero,.team-hero,.care-hero) :where(h1,h2,h3){color:#244334!important;font-size:clamp(24px,2.2vw,31px)!important;margin-top:3px!important}
+.client-app :where(.ops-hero,.request-hero,.team-hero,.care-hero) p{color:#718079!important;font-size:calc(13px * var(--portal-font-scale,1))!important;line-height:1.7!important;max-width:840px}
+.client-app :where(.ops-hero,.request-hero,.team-hero,.care-hero) :where(.ops-orbit,.care-orb){display:none!important}
+.client-app .request-readiness{min-width:170px}
+.client-app .request-readiness>div{width:66px;height:66px}
+.client-app .client-partnership-hero{min-height:330px}
+.client-app[data-portal-homepage="operational"] .client-partnership-hero{min-height:0!important}
+.client-app[data-portal-homepage="mixed"] .client-partnership-hero{min-height:300px}
+.client-app[data-portal-homepage="visual"] .client-partnership-hero{min-height:390px}
+
+/* Settings page: mobile-safe and visibly interactive. */
+.portal-settings-shell,.portal-settings-content,.portal-settings-panel{min-width:0}
+.portal-choice>div,.portal-settings-actions,.portal-settings-status{max-width:100%}
+.portal-notify-matrix{max-width:100%;overscroll-behavior-inline:contain}
+.portal-mfa-enroll img{max-width:100%;height:auto;aspect-ratio:1}
+
+/* -------------------------------------------------------------------------- */
+/* Individual account: readable storefront/account balance                       */
+/* -------------------------------------------------------------------------- */
+.individual-account-app,.individual-page{font-size:16px;line-height:1.55}
+.individual-account-app :where(p,small,label),.individual-page :where(p,small,label){font-size:12px!important;line-height:1.65}
+.individual-account-app :where(button,a,input,select,textarea),.individual-page :where(button,a,input,select,textarea){font-size:12px}
+.individual-account-app :where(.individual-card-kicker>span,.individual-order-head small,.individual-order-head span,.individual-now-card small,.individual-order-foot span),
+.individual-page :where(.individual-settings-kicker,.individual-security-note,.individual-security-current-device small){font-size:10px!important}
+.individual-account-app :where(.individual-order-head strong,.individual-now-card strong,.individual-attention strong,.individual-product-tile strong){font-size:13px!important}
+.individual-account-app .individual-timeline>div{font-size:9px!important}
+.individual-account-app .individual-topbar-center small,.individual-account-app .individual-profile-chip small{font-size:10px!important}
+.individual-account-app .individual-profile-chip strong{font-size:12px!important}
+
+/* Keep the store visually strong, but turn utility/account page heroes into
+   compact headers so the experience still feels like commerce, not a database. */
+.individual-account-app :where(.individual-orders-hero),
+.individual-page :where(.individual-settings-hero,.individual-security-hero,.individual-documents-hero){
+  min-height:0!important;padding:18px 20px!important;border-radius:18px!important;margin-bottom:14px!important;
+  box-shadow:0 8px 26px rgba(28,52,40,.055)!important;
+}
+.individual-account-app .individual-orders-hero h1,
+.individual-page :where(.individual-settings-hero h1,.individual-security-hero h1,.individual-documents-hero h1){font-size:clamp(28px,3vw,36px)!important}
+.individual-account-app .individual-orders-hero p,
+.individual-page :where(.individual-settings-hero p,.individual-security-hero p,.individual-documents-hero p){font-size:13px!important;max-width:760px}
+
+/* -------------------------------------------------------------------------- */
+/* Mobile hardening                                                            */
+/* -------------------------------------------------------------------------- */
+@media(max-width:900px){
+  html,body,#root{width:100%;max-width:100%;overflow-x:hidden;overflow-x:clip}
+  .client-app{padding-bottom:82px}
+  .client-topbar{padding-inline:14px;gap:10px}
+  .client-content{width:100%;padding:18px 14px 38px!important}
+  .client-page-head{gap:12px}
+  .client-page-head>div:first-child{width:100%}
+  .client-page-head>div:last-child{max-width:100%;flex-wrap:wrap;overflow:visible!important}
+  .client-page-head>div:last-child>*{max-width:100%}
+  .client-mobile-dock{max-width:calc(100vw - 16px)}
+  .portal-settings-nav{max-width:100%}
+  .client-app :where(.ops-hero,.request-hero,.team-hero,.care-hero,.living-contract-hero,.site-detail-hero){padding:16px!important}
+  .client-partnership-hero{min-height:0!important;grid-template-columns:1fr!important}
+  .client-partnership-scene{min-height:210px}
+
+  .individual-account-app,.individual-page{width:100%;max-width:100%;overflow-x:hidden;overflow-x:clip}
+  .individual-account-app :where(.individual-shell,.individual-main,.individual-orders-main,.individual-support-main,.individual-cart-main,.individual-addresses-main,.individual-occasions-main,.smart-store-main,.individual-product-detail-main),
+  .individual-page :where(.individual-settings-main,.individual-profile-main,.individual-documents-main,.individual-notifications-main,.individual-security-main){width:100%;max-width:100%;padding-inline:14px!important}
+}
+
+@media(max-width:680px){
+  .client-content{padding-inline:10px!important}
+  .client-topbar{height:64px;padding-inline:9px}
+  .client-topbar-title h1{font-size:18px!important;max-width:46vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .client-top-actions{gap:4px;min-width:0}
+  .client-top-icon,.client-cart-chip{height:38px}
+  .client-user-chip{display:none!important}
+  .client-page-head h2{font-size:28px!important}
+  .client-page-head p{font-size:13px!important}
+  .client-primary,.client-secondary,.client-danger,.client-link{font-size:12px!important;min-height:42px}
+
+  .client-app :where(.client-kpi-grid,.client-contract-grid,.client-site-grid,.client-dashboard-grid,.client-dashboard-v2-main,.client-form-grid,.client-settings-grid,
+    .portal-settings-form-grid.two,.portal-settings-form-grid.three,.portal-toggle-grid,.portal-verified-grid,.portal-integration-grid,.portal-security-summary,
+    .request-service-grid,.request-site-grid,.request-two,.team-stats,.team-layout,.team-side,.team-form-grid,.team-site-picker,
+    .living-contract-grid,.site-detail-grid,.care-control-grid,.care-kb-grid){grid-template-columns:1fr!important}
+
+  .client-app :where(.ops-hero,.request-hero,.team-hero,.care-hero,.living-contract-hero,.site-detail-hero){
+    display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important;padding:15px!important;border-radius:15px!important
+  }
+  .client-app :where(.ops-hero,.request-hero,.team-hero,.care-hero) h2{font-size:25px!important}
+  .client-app :where(.ops-hero-actions,.team-hero-actions,.site-detail-care-actions,.client-hero-actions){display:grid!important;grid-template-columns:1fr!important;width:100%}
+  .client-app :where(.ops-hero-actions,.team-hero-actions,.site-detail-care-actions,.client-hero-actions)>*{width:100%!important;justify-content:center}
+  .request-readiness{width:100%;min-width:0!important;justify-content:flex-start}
+  .request-readiness p{max-width:none!important}
+
+  .portal-settings-status{display:grid!important;grid-template-columns:1fr 1fr;width:100%}
+  .portal-settings-status>*{width:100%;justify-content:center}
+  .portal-choice>div{display:grid!important;grid-template-columns:1fr 1fr}
+  .portal-choice button{width:100%;justify-content:flex-start}
+  .portal-accent-grid{grid-template-columns:1fr 1fr!important}
+  .portal-password-form{grid-template-columns:1fr!important}
+  .portal-mfa-enroll{grid-template-columns:1fr!important}
+  .portal-mfa-enroll img{width:min(210px,100%)!important;justify-self:center}
+  .portal-device-list article{grid-template-columns:38px minmax(0,1fr)!important}
+  .portal-device-list article>em,.portal-device-actions{grid-column:2}
+  .portal-device-actions{width:100%;display:flex;flex-wrap:wrap}
+  .portal-device-actions>*{flex:1}
+
+  /* All mobile flex/grid children can shrink without causing a viewport split. */
+  .client-app :where(.client-page,.client-panel,.portal-settings-panel,.request-stage,.ops-card,.team-members,.living-contract-panel,.site-panel)>*{min-width:0;max-width:100%}
+
+  .individual-account-app :where(.individual-primary-grid,.individual-secondary-grid,.individual-home-grid,.individual-orders-grid,.individual-settings-grid,.individual-security-grid,
+    .individual-security-state-grid,.individual-security-privacy-grid,.individual-documents-grid,.individual-address-grid,.individual-favorites-grid,.individual-support-layout,
+    .individual-cart-layout,.individual-occasion-card-grid,.individual-usual-gift-list,.individual-profile-grid,.smart-store-grid,.smart-store-product-grid,
+    .product-detail-content-grid,.product-detail-recommendation-grid){grid-template-columns:1fr!important}
+  .individual-account-app :where(.individual-orders-hero,.smart-store-hero),
+  .individual-page :where(.individual-settings-hero,.individual-security-hero,.individual-documents-hero){display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important;padding:16px!important}
+  .individual-account-app :where(.individual-orders-hero-actions,.smart-store-hero-actions){width:100%;display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+  .individual-account-app :where(.individual-orders-hero-actions,.smart-store-hero-actions)>*{width:100%;justify-content:center}
+  .individual-account-app .individual-attention{grid-template-columns:auto minmax(0,1fr)!important}
+  .individual-account-app .individual-attention>button{grid-column:1/-1;width:100%;justify-content:center}
+  .individual-account-app .individual-order-head{grid-template-columns:1fr auto!important}
+  .individual-account-app .individual-order-thumbs{grid-column:1/-1;justify-content:flex-start}
+  .individual-account-app .individual-timeline{overflow-x:auto;grid-template-columns:repeat(6,minmax(74px,1fr));padding-bottom:6px}
+  .individual-account-app .individual-mobile-dock{max-width:calc(100vw - 16px)}
+  .individual-page :where(.individual-settings-tabs,.individual-notifications-toolbar,.individual-documents-filters){max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+}
+
+@media(max-width:460px){
+  .client-content{padding-inline:8px!important}
+  .client-menu,.client-top-icon{width:36px;height:36px}
+  .client-cart-chip{padding-inline:8px}
+  .client-page-head h2{font-size:26px!important}
+  .client-kpi-grid{grid-template-columns:1fr!important}
+  .portal-settings-status{grid-template-columns:1fr}
+  .portal-choice>div,.portal-accent-grid{grid-template-columns:1fr!important}
+  .portal-settings-panel{padding:13px!important;border-radius:14px!important}
+  .portal-settings-section-head{gap:9px}
+  .portal-settings-section-head>span{width:39px;height:39px}
+  .portal-settings-section-head h3{font-size:24px!important}
+  .portal-notify-matrix>header,.portal-notify-matrix>div{min-width:520px}
+
+  .individual-account-app :where(.individual-shell,.individual-main,.individual-orders-main,.individual-support-main,.individual-cart-main,.individual-addresses-main,.individual-occasions-main,.smart-store-main,.individual-product-detail-main),
+  .individual-page :where(.individual-settings-main,.individual-profile-main,.individual-documents-main,.individual-notifications-main,.individual-security-main){padding-inline:10px!important}
+  .individual-account-app :where(.individual-orders-hero-actions,.smart-store-hero-actions){grid-template-columns:1fr}
+  .individual-account-app .individual-topbar-center{display:none}
+  .individual-account-app .individual-topbar-inner{grid-template-columns:1fr auto!important;gap:8px}
+  .individual-account-app .individual-profile-chip>div{display:none}
+  .individual-account-app .individual-primary-grid{grid-template-columns:1fr!important}
+  .individual-account-app .individual-order-card,.individual-account-app .individual-cart-card{padding:14px!important;border-radius:16px!important}
+}
+
+/* Dark theme counterparts for compact secondary page intros. */
+.client-app[data-portal-theme="dark"] :where(.ops-hero,.request-hero,.team-hero,.care-hero){
+  background:linear-gradient(135deg,#17251d,#1c2d23)!important;color:var(--cp-ink)!important;border-color:var(--cp-line)!important
+}
+.client-app[data-portal-theme="dark"] :where(.ops-hero,.request-hero,.team-hero,.care-hero) :where(h1,h2,h3){color:#edf3ee!important}
+.client-app[data-portal-theme="dark"] :where(.ops-hero,.request-hero,.team-hero,.care-hero) p{color:#aebbb2!important}
+.client-app[data-portal-theme="dark"][data-portal-glass="clear"] :where(.client-topbar,.client-mobile-dock){background-color:rgba(18,29,23,.76)}
+.client-app[data-portal-decorations="none"] .request-hero:before,
+.client-app[data-portal-decorations="none"] .request-hero:after,
+.client-app[data-portal-decorations="none"] .client-hero:before{display:none!important}
+
+/* Admin receives the same viewport safety pass without changing its visual system. */
+.admin-app,.admin-workspace,.admin-content,.admin-page{min-width:0;max-width:100%}
+.admin-app :where(section,article,header,div,form,nav,aside){min-width:0}
+.admin-app :where(h1,h2,h3,h4,p,strong,small,span,b,label){overflow-wrap:anywhere}
+@media(max-width:820px){
+  .admin-app{width:100%;max-width:100%;overflow-x:clip}
+  .admin-content{width:100%;padding-inline:14px!important}
+  .admin-page-head>div:last-child{width:100%;max-width:100%;display:flex;flex-wrap:wrap}
+  .admin-page-head>div:last-child>*{max-width:100%}
+}
+@media(max-width:560px){
+  .admin-content{padding-inline:9px!important}
+  .admin-topbar{padding-inline:9px!important;gap:8px}
+  .admin-topbar-title h1{max-width:44vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+
+/* -------------------------------------------------------------------------- */
+/* Smart store: replace prototype-scale micro text with retail-scale type.     */
+/* -------------------------------------------------------------------------- */
+.smart-store-account :where(.smart-store-hero-copy>span,.smart-store-note,.smart-store-cart-top b,
+  .smart-store-cart-strip span,.smart-store-cart-strip button,.smart-store-context-strip button,
+  .smart-store-context-strip span,.smart-store-context-strip small,.smart-store-active-context span,
+  .smart-store-active-context>button,.smart-store-section-head span,.smart-store-section-head p,
+  .smart-store-occasion-chips button,.smart-store-section-head.catalog select,.smart-filter-button,
+  .smart-filter-button b,.smart-store-desktop-filters button,.smart-product-media em,
+  .smart-product-copy>small,.smart-product-meta span,.smart-product-bottom del,
+  .smart-product-actions button,.smart-product-actions a,.smart-store-empty p,
+  .smart-filter-sheet>header small,.smart-budget-sheet>header small,.smart-compare-sheet>header small,
+  .smart-assistant-sheet>header span,.smart-filter-group>strong,.smart-filter-group button,
+  .smart-quick-product small,.smart-quick-product p,.smart-quick-qty>span,
+  .smart-assistant-results small,.smart-assistant-results span,.smart-assistant-empty p,
+  .smart-assistant-sheet>footer>span,.smart-budget-sheet>label>span,.smart-budget-sheet label b,
+  .smart-budget-overrun strong,.smart-budget-overrun small,.smart-budget-sheet>p,
+  .smart-compare-bar strong,.smart-compare-bar span,.smart-compare-table .labels span,
+  .smart-compare-table .column>*,.smart-compare-table .column>span b){
+  font-size:10px!important;line-height:1.5;
+}
+.smart-store-account :where(.smart-store-hero-actions button,.smart-product-bottom>button,
+  .smart-store-empty button,.smart-filter-sheet footer button,.smart-budget-sheet footer button,
+  .smart-assistant-sheet footer button,.smart-compare-sheet footer button,.smart-quick-sheet>footer a,
+  .smart-quick-sheet>footer button,.smart-assistant-results article>button,.smart-compare-bar button,
+  .smart-product-detail-cta){font-size:11px!important;min-height:38px}
+.smart-store-account .smart-assistant-options strong{font-size:11px!important}
+.smart-store-account .smart-quick-qty b{font-size:12px!important}
+
+/* Public storefront microcopy also gets a modest readability lift without
+   changing the editorial hierarchy. */
+.app :where(.header-signature small,.brand-mark small,.bottom-link small,.season-rail button small,
+  .photograph-caption,.photo-credit,.hero-scroll,.hero-footnote,.collection-number,
+  .services-hero-note,.services-hero-stamp>span,.auth-note,.digital-seal span){
+  font-size:max(10px,.72rem)!important;line-height:1.45;
+}
+
+@media(max-width:420px){
+  /* Keep the tightest product-card CTA icon-only so two-column cards do not
+     reintroduce horizontal overflow on narrow phones. */
+  .smart-store-account .smart-product-bottom>button{font-size:0!important;min-width:38px;padding-inline:0!important}
+}

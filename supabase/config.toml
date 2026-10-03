@@ -1,0 +1,6 @@
+# v10.44.3: browser preflight + in-function JWT validation
+# Edge Functions deployment settings.
+# balqees-care must receive unauthenticated OPTIONS preflight requests from browsers.
+# POST requests remain authenticated inside the function with auth.getUser().
+[functions.balqees-care]
+verify_jwt = false

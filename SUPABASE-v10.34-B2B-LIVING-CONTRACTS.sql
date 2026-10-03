@@ -1,0 +1,71 @@
+-- Balqees Floral v10.34 — B2B Living Contract
+-- Reference manifest for the schema/workflow that is ALREADY APPLIED to live project urlsngdafpfuetzafggy.
+-- Do not blindly re-run against production. Use the recorded Supabase migrations as the source of truth.
+--
+-- Applied live migrations, in order:
+-- 20261001202200  b2b_living_contracts_v10_34
+-- 20261001202236  b2b_contract_financial_privacy_v10_34
+-- 20261001202702  b2b_living_contract_workflow_v10_34
+-- 20261001203015  b2b_contract_link_guards_and_events_v10_34
+-- 20261001203052  b2b_contract_renewal_event_dedupe_v10_34
+-- 20261001203225  b2b_living_contract_advisor_cleanup_v10_34
+-- 20261001203709  b2b_contract_legacy_value_guard_v10_34
+--
+-- Functional schema introduced/extended by these migrations:
+--   public.contracts
+--     published_at, coverage_notes_ar/en, renewal_status,
+--     renewal_review_requested_at/by, next_review_on, renewal_note,
+--     renewed_contract_id; legacy contract_value is forced NULL.
+--   public.contract_financials
+--     protected value/budget surface readable only by Balqees admin or org view_finance.
+--   public.contract_sites
+--     structured site coverage: covered / conditional / excluded.
+--   public.contract_services
+--     structured service coverage used by Coverage Checker.
+--   public.contract_obligations
+--     Balqees / organization commitments, due date, visibility and site scope.
+--   public.contract_amendments
+--     versioned/published amendments with private document paths.
+--   public.contract_contacts
+--     Balqees / organization contacts with client visibility flag.
+--   public.contract_events
+--     audit/timeline events.
+--
+-- Linked entities:
+--   orders.contract_id
+--   organization_service_requests.contract_id
+--   client_documents.contract_id + client_documents.site_id
+--   quotations.contract_id (existing/current live workflow)
+--
+-- Security invariants:
+--   * draft contracts are not client-readable.
+--   * draft amendments are not client-readable.
+--   * internal obligations (visible_to_client=false) are not client-readable.
+--   * hidden contacts (is_visible=false) are not client-readable.
+--   * contract_financials is protected by org_permission(...,'view_finance').
+--   * contracts.contract_value is deliberately forced to NULL by contract_publish_guard.
+--   * cross-organization contract links are rejected by private.validate_contract_link().
+--   * contract child rows are validated against the parent organization's ID.
+--
+-- Realtime publication includes:
+--   public.contracts
+--   public.contract_events
+--   public.contract_obligations
+--
+-- Public client RPC:
+--   public.request_contract_renewal_review(p_contract_id uuid)
+-- The wrapper executes the private implementation, which checks auth.uid(),
+-- organization membership/approval permission and contract lifecycle state.
+--
+-- Storage:
+-- Official contract copies and amendments reuse the private client-documents bucket.
+-- Access is through authenticated Storage RLS / short-lived signed URLs.
+--
+-- Notifications/deep links:
+-- Contract status, amendments and renewal workflow emit organization notifications
+-- linking to /portal/contracts/<contract_uuid>.
+--
+-- Advisor state after cleanup on 2026-10-01:
+-- Security: only project-wide auth_leaked_password_protection warning remains.
+-- Performance: no unindexed_foreign_keys or multiple_permissive_policies from v10.34;
+-- only unused_index INFO remains on the small/new dataset.

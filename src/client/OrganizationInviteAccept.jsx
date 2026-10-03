@@ -1,0 +1,12 @@
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { BadgeCheck, Building2, LoaderCircle, LogIn, ShieldCheck, TriangleAlert } from 'lucide-react';
+import BrandMark from '../components/BrandMark';
+import { supabase } from '../lib/supabase';
+
+export default function OrganizationInviteAccept({lang='ar'}){
+  const ar=lang==='ar'; const {token}=useParams(); const nav=useNavigate();
+  const [state,setState]=useState({loading:true,signed:false,done:false,error:''});
+  useEffect(()=>{let live=true;(async()=>{const {data}=await supabase.auth.getSession();if(!live)return;if(!data.session){localStorage.setItem('balqees-org-invite-token',token||'');setState({loading:false,signed:false,done:false,error:''});return;}setState(s=>({...s,signed:true}));const{data:result,error}=await supabase.rpc('accept_organization_member_invite_v2',{p_invite_token:token});if(!live)return;if(error)setState({loading:false,signed:true,done:false,error:error.message||'INVITE_FAILED'});else{localStorage.removeItem('balqees-org-invite-token');localStorage.setItem('balqees-portal-org',result?.organization_id||'');setState({loading:false,signed:true,done:true,error:''});window.setTimeout(()=>nav('/portal/team',{replace:true}),900);}})();return()=>{live=false};},[token]);
+  return <main className="organization-invite-page" dir={ar?'rtl':'ltr'}><section><BrandMark/><span><Building2/></span>{state.loading?<><LoaderCircle className="spin"/><h1>{ar?'جاري التحقق من الدعوة…':'Checking invitation…'}</h1></>:state.done?<><BadgeCheck/><h1>{ar?'تم قبول الدعوة':'Invitation accepted'}</h1><p>{ar?'تمت إضافة حسابك للمنشأة بالصلاحيات المحددة، وسيتم فتح مساحة العمل الآن.':'Your account has been added with the assigned access. Opening the workspace now.'}</p></>:!state.signed?<><ShieldCheck/><h1>{ar?'دعوة للانضمام إلى منشأة بلقيس':'Organization invitation'}</h1><p>{ar?'هذه الدعوة مرتبطة ببريد محدد. سجل الدخول بنفس البريد ثم افتح رابط الدعوة مرة أخرى لقبولها بأمان.':'This invitation is bound to a specific email. Sign in with that email, then reopen this link to accept securely.'}</p><Link className="client-primary" to="/account/login"><LogIn/>{ar?'تسجيل الدخول':'Sign in'}</Link></>:<><TriangleAlert/><h1>{ar?'تعذر قبول الدعوة':'Could not accept invitation'}</h1><p>{state.error}</p><Link className="client-secondary" to="/account"><LogIn/>{ar?'العودة للحساب':'Back to account'}</Link></>}</section></main>;
+}

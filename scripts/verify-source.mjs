@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+
+const root=path.resolve(new URL('..',import.meta.url).pathname);
+const src=path.join(root,'src');
+const exts=['','.js','.jsx','.mjs','.css','.json','.svg','.png','.jpg','.jpeg','.webp'];
+const files=[];
+function walk(dir){for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory())walk(p);else files.push(p)}}
+walk(src);
+let checked=0;const missing=[];
+const importRe=/(?:import\s+(?:[^'"()]+?\s+from\s+)?|import\s*\(|export\s+[^'"()]+?\s+from\s+)["'](\.[^"']+)["']/g;
+for(const file of files.filter(f=>/\.(?:js|jsx|mjs)$/.test(f))){const text=fs.readFileSync(file,'utf8');for(const m of text.matchAll(importRe)){checked++;const base=path.resolve(path.dirname(file),m[1]);let ok=false;for(const ext of exts){const c=base+ext;if(fs.existsSync(c)&&fs.statSync(c).isFile()){ok=true;break}}if(!ok&&fs.existsSync(base)&&fs.statSync(base).isDirectory()){for(const n of ['index.js','index.jsx','index.mjs'])if(fs.existsSync(path.join(base,n))){ok=true;break}}if(!ok)missing.push(`${path.relative(root,file)} -> ${m[1]}`)}}
+const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const required=['public/favicon.svg','public/manifest.webmanifest','SUPABASE-v10.44-PRODUCTION-HARDENING.sql'];
+for(const rel of required)if(!fs.existsSync(path.join(root,rel)))missing.push(`missing required file: ${rel}`);
+if(pkg.version!=='10.45.7')missing.push(`package version is ${pkg.version}, expected 10.45.7`);
+if(!html.includes('/favicon.svg'))missing.push('index.html does not declare /favicon.svg');
+if(missing.length){console.error('Source verification FAILED');for(const x of missing)console.error(`- ${x}`);process.exit(1)}
+console.log(`Source verification OK: ${checked} relative imports checked; ${files.length} source files scanned; version ${pkg.version}.`);

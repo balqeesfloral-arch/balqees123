@@ -1,0 +1,109 @@
+-- Balqees Floral v10.27 — Individual Settings > Security & Privacy Center
+-- Keeps security/privacy under /account/settings.
+-- This migration adds only app-owned privacy requests and a lightweight account-security activity log.
+-- Passwords, MFA and sessions continue to be managed by Supabase Auth.
+
+create table if not exists public.customer_privacy_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  request_type text not null check (request_type in ('data_copy','account_deletion')),
+  status text not null default 'pending' check (status in ('pending','in_review','completed','rejected','cancelled')),
+  admin_note text,
+  created_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  completed_at timestamptz
+);
+
+create index if not exists customer_privacy_requests_user_idx
+  on public.customer_privacy_requests(user_id, created_at desc);
+create unique index if not exists customer_privacy_requests_one_open_per_type_idx
+  on public.customer_privacy_requests(user_id, request_type)
+  where status in ('pending','in_review');
+
+alter table public.customer_privacy_requests enable row level security;
+
+drop policy if exists "privacy_requests_customer_select" on public.customer_privacy_requests;
+create policy "privacy_requests_customer_select"
+on public.customer_privacy_requests
+for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists "privacy_requests_customer_insert" on public.customer_privacy_requests;
+create policy "privacy_requests_customer_insert"
+on public.customer_privacy_requests
+for insert
+to authenticated
+with check ((select auth.uid()) = user_id and status = 'pending');
+
+drop policy if exists "privacy_requests_admin_all" on public.customer_privacy_requests;
+create policy "privacy_requests_admin_all"
+on public.customer_privacy_requests
+for all
+to authenticated
+using (public.is_balqees_admin())
+with check (public.is_balqees_admin());
+
+grant select, insert on public.customer_privacy_requests to authenticated;
+revoke all on public.customer_privacy_requests from anon;
+
+create table if not exists public.customer_security_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  event_type text not null check (event_type in (
+    'password_changed',
+    'mfa_enabled',
+    'mfa_disabled',
+    'other_sessions_signed_out',
+    'all_sessions_signed_out',
+    'personalization_history_cleared',
+    'privacy_request_created'
+  )),
+  event_metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists customer_security_events_user_idx
+  on public.customer_security_events(user_id, created_at desc);
+
+alter table public.customer_security_events enable row level security;
+
+drop policy if exists "security_events_customer_select" on public.customer_security_events;
+create policy "security_events_customer_select"
+on public.customer_security_events
+for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists "security_events_customer_insert" on public.customer_security_events;
+create policy "security_events_customer_insert"
+on public.customer_security_events
+for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
+drop policy if exists "security_events_admin_select" on public.customer_security_events;
+create policy "security_events_admin_select"
+on public.customer_security_events
+for select
+to authenticated
+using (public.is_balqees_admin());
+
+grant select, insert on public.customer_security_events to authenticated;
+revoke all on public.customer_security_events from anon;
+
+-- The client cannot update or delete security events or privacy requests.
+revoke update, delete on public.customer_security_events from authenticated;
+revoke update, delete on public.customer_privacy_requests from authenticated;
+
+-- Limit event metadata size to prevent accidental oversized client payloads.
+alter table public.customer_security_events
+  drop constraint if exists customer_security_events_metadata_size_check;
+alter table public.customer_security_events
+  add constraint customer_security_events_metadata_size_check
+  check (octet_length(event_metadata::text) <= 4096);
+
+comment on table public.customer_privacy_requests is
+  'Documented individual-customer privacy requests created from Settings > Security & Privacy.';
+comment on table public.customer_security_events is
+  'User-visible Balqees security activity. UX history only; authoritative Auth events remain in Supabase Auth/logs.';

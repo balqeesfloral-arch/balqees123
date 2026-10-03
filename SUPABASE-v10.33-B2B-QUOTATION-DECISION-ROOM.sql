@@ -1,0 +1,25 @@
+-- Balqees Floral v10.33 — B2B Quotation Decision Room
+-- Consolidated source reference for the live migrations applied on 2026-10-01.
+-- Live migration names:
+--   b2b_quotation_decision_room_v10_33
+--   b2b_quotation_action_guard_v10_33
+--   b2b_quotation_draft_visibility_guard_v10_33
+--   b2b_quotation_view_guard_v10_33
+--   b2b_quotation_fk_indexes_v10_33
+
+-- The live database adds the following quotation capabilities:
+-- 1) series_id + version_number + previous_quote_id + is_current
+-- 2) service_request_id + site_id linkage
+-- 3) viewed_at + viewed_by
+-- 4) stable quotation_items.line_key for version diffs
+-- 5) quotation_events timeline
+-- 6) public.mark_quotation_viewed(uuid)
+-- 7) public.create_quotation_revision(uuid) with private/admin guarded implementation
+-- 8) status audit + organization notification trigger
+-- 9) Realtime for quotations and quotation_events
+-- 10) server-side guards blocking expired/old-version approvals
+-- 11) RLS that hides draft quotation rows, items and events from organization users.
+-- 12) current-version-only viewed-state guard.
+-- 13) FK support indexes for viewer/event/version relations.
+
+-- IMPORTANT: This file documents the live schema changes. The canonical migration history is in Supabase.
