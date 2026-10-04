@@ -60,7 +60,7 @@ export default function ClientRequestWizard(){
   const ar = lang==='ar';
   const cart = useBalqeesCart();
   const [step,setStep]=useState(1);
-  const [form,setForm]=useState(EMPTY);
+  const [form,setForm]=useState(()=>({...EMPTY,submission_goal:searchParams.get('goal')==='quotation'?'quotation':EMPTY.submission_goal}));
   const [request,setRequest]=useState(null);
   const [sites,setSites]=useState([]);
   const [attachments,setAttachments]=useState([]);

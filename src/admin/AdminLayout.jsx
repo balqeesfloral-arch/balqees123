@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   BadgePercent,
   Bell,
@@ -34,9 +34,15 @@ import BrandMark from '../components/BrandMark';
 import { supabase } from '../lib/supabase';
 import { useSystemSettings } from '../lib/systemSettings';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminPageHub from './pages/AdminPageHub';
+import AdminErrorBoundary from './AdminErrorBoundary';
+import { ADMIN_NAV, ADMIN_GROUPS, CONNECTED_PAGES, matchesPage } from './adminNavigation';
+import useAdminLiveRefresh from './useAdminLiveRefresh';
+import './admin-command-center.css';
 import AdminUsers from './pages/AdminUsers';
 import AdminOrders from './pages/AdminOrders';
 import AdminServiceRequests from './pages/AdminServiceRequests';
+import AdminQuoteRequests from './pages/AdminQuoteRequests';
 import AdminQuotes from './pages/AdminQuotes';
 import AdminContracts from './pages/AdminContracts';
 import AdminSites from './pages/AdminSites';
@@ -54,28 +60,7 @@ import AdminAudit from './pages/AdminAudit';
 import AdminOrganizationTeam from './pages/AdminOrganizationTeam';
 import AdminOrganizationSettings from './pages/AdminOrganizationSettings';
 
-const NAV = [
-  { path: '/admin', icon: LayoutDashboard, ar: 'نظرة عامة', en: 'Overview', end: true },
-  { path: '/admin/users', icon: UsersRound, ar: 'المستخدمون', en: 'Users' },
-  { path: '/admin/service-requests', icon: ClipboardPlus, ar: 'طلبات المنشآت', en: 'B2B requests' },
-  { path: '/admin/organization-team', icon: UsersRound, ar: 'فرق المنشآت', en: 'Organization teams' },
-  { path: '/admin/organization-settings', icon: Settings, ar: 'إعدادات المنشآت', en: 'Organization settings' },
-  { path: '/admin/orders', icon: PackageSearch, ar: 'الطلبات', en: 'Orders' },
-  { path: '/admin/quotes', icon: FileText, ar: 'عروض الأسعار', en: 'Quotations' },
-  { path: '/admin/contracts', icon: ScrollText, ar: 'العقود', en: 'Contracts' },
-  { path: '/admin/sites', icon: MapPinned, ar: 'المواقع والفروع', en: 'Sites & branches' },
-  { path: '/admin/financial-docs', icon: ReceiptText, ar: 'المالية والمستندات', en: 'Finance & documents' },
-  { path: '/admin/catalog', icon: Boxes, ar: 'المنتجات والتسعير', en: 'Catalog & pricing' },
-  { path: '/admin/institutional-catalog', icon: Sparkles, ar: 'كتالوج المنشآت', en: 'Institutional catalog' },
-  { path: '/admin/discounts', icon: BadgePercent, ar: 'الخصومات', en: 'Discounts' },
-  { path: '/admin/offers', icon: Gift, ar: 'العروض', en: 'Offers' },
-  { path: '/admin/notifications', icon: Bell, ar: 'الإشعارات', en: 'Notifications' },
-  { path: '/admin/support', icon: MessageSquareText, ar: 'التواصل', en: 'Communication' },
-  { path: '/admin/help', icon: CircleHelp, ar: 'مركز المساعدة', en: 'Help center' },
-  { path: '/admin/audit', icon: FileClock, ar: 'سجل النشاط', en: 'Activity log' },
-  { path: '/admin/settings', icon: Settings, ar: 'الإعدادات', en: 'Settings' },
-  { path: '/admin/profile', icon: UserRoundCog, ar: 'الملف الشخصي', en: 'Profile' },
-];
+const NAV = ADMIN_NAV;
 
 function label(item, ar) { return ar ? item.ar : item.en; }
 
@@ -83,31 +68,32 @@ export default function AdminLayout({ lang, setLang, session }) {
   const ar = lang === 'ar';
   const location = useLocation();
   const navigate = useNavigate();
-  const { settings: systemSettings } = useSystemSettings();
+  const { settings: systemSettings, error: settingsError } = useSystemSettings();
   const settings = systemSettings.admin_ui;
   const securitySettings = systemSettings.security;
   const [collapsed, setCollapsed] = useState(settings.sidebar === 'collapsed');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState('');
-  const [badges, setBadges] = useState({ support: 0, notifications: 0, requests: 0 });
+  const [badges, setBadges] = useState({ support: null, notifications: null, requests: null });
+  const [actionError, setActionError] = useState('');
 
   const displayName = session.user?.user_metadata?.full_name || 'Balqees Admin';
   const email = session.user?.email || '';
 
   const refreshBadges = useCallback(async () => {
     if (!supabase) return;
-    const [support, notifications, requests] = await Promise.all([
+    const [support, notifications, requests, quoteRequests] = await Promise.all([
       supabase.from('support_conversations').select('id', { count: 'exact', head: true }).in('status', ['open','pending']),
       supabase.from('notifications').select('id', { count: 'exact', head: true }).in('status', ['draft','scheduled']),
       supabase.from('organization_service_requests').select('id', { count: 'exact', head: true }).eq('status','submitted'),
+      supabase.from('quote_requests').select('id', { count: 'exact', head: true }).in('status',['submitted','in_review']),
     ]);
-    setBadges({ support: support.count || 0, notifications: notifications.count || 0, requests: requests.count || 0 });
+    setBadges({ support: support.error ? null : support.count, notifications: notifications.error ? null : notifications.count, requests: requests.error ? null : requests.count, quoteRequests: quoteRequests.error ? null : quoteRequests.count });
   }, []);
 
-  useEffect(() => {
-    refreshBadges();
-  }, [refreshBadges]);
+  useEffect(() => { refreshBadges(); }, [refreshBadges]);
+  useAdminLiveRefresh(refreshBadges, ['support_conversations', 'notifications', 'organization_service_requests','quote_requests']);
 
   useEffect(() => {
     setCollapsed(settings.sidebar === 'collapsed');
@@ -143,17 +129,19 @@ export default function AdminLayout({ lang, setLang, session }) {
         e.preventDefault();
         setPaletteOpen(v => !v);
       }
-      if (e.key === 'Escape') setPaletteOpen(false);
+      if (e.key === 'Escape') { setPaletteOpen(false); setMobileOpen(false); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   const current = NAV.find(item => item.end ? location.pathname === item.path : location.pathname.startsWith(item.path)) || NAV[0];
-  const paletteItems = useMemo(() => NAV.filter(item => label(item, ar).toLowerCase().includes(paletteQuery.toLowerCase())), [ar, paletteQuery]);
+  const paletteItems = useMemo(() => NAV.filter(item => matchesPage(item, paletteQuery)), [paletteQuery]);
+  const connectedItems = useMemo(() => CONNECTED_PAGES.filter(item => matchesPage(item, paletteQuery)), [paletteQuery]);
 
   async function logout() {
-    await supabase.auth.signOut({scope:'local'});
+    const { error } = await supabase.auth.signOut({scope:'local'});
+    if (error) { setActionError(ar ? 'تعذر تسجيل الخروج. أعد المحاولة.' : 'Sign out failed. Please retry.'); return; }
     navigate('/account', { replace: true });
   }
 
@@ -168,18 +156,18 @@ export default function AdminLayout({ lang, setLang, session }) {
   return <div className={adminClass} dir={ar ? 'rtl' : 'ltr'}>
     <aside className={`admin-sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
       <div className="admin-sidebar-head">
-        <NavLink to="/admin" className="admin-brand"><BrandMark/><span><b>BALQEES</b><small>CONTROL CENTER</small></span></NavLink>
-        <button className="admin-icon-button admin-mobile-close" onClick={() => setMobileOpen(false)} aria-label="close"><X size={18}/></button>
+        <NavLink to="/admin" className="admin-brand"><BrandMark compact/><span><b>{ar ? 'بلقيس الورد' : 'BALQEES'}</b><small>{ar ? 'مركز إدارة النظام' : 'CONTROL CENTER'}</small></span></NavLink>
+        <button className="admin-icon-button admin-mobile-close" onClick={() => setMobileOpen(false)} aria-label={ar ? 'إغلاق القائمة' : 'Close menu'}><X size={18}/></button>
       </div>
       <div className="admin-sidebar-badge"><Sparkles size={14}/><span>{ar ? 'إدارة بلقيس الذكية' : 'Balqees Intelligent Admin'}</span></div>
-      <nav className="admin-nav">
-        {NAV.map(item => {
+      <nav className="admin-nav" aria-label={ar ? 'أقسام الإدارة' : 'Admin sections'}>
+        {ADMIN_GROUPS.map(group => <div className="admin-nav-group" key={group.id}><span className="admin-nav-group-label">{ar ? group.ar : group.en}</span>{NAV.filter(item => item.group === group.id).map(item => {
           const Icon = item.icon;
-          const badge = item.path === '/admin/support' ? badges.support : item.path === '/admin/notifications' ? badges.notifications : item.path === '/admin/service-requests' ? badges.requests : 0;
+          const badge = item.path === '/admin/support' ? badges.support : item.path === '/admin/notifications' ? badges.notifications : item.path === '/admin/service-requests' ? badges.requests : item.path === '/admin/quote-requests' ? badges.quoteRequests : 0;
           return <NavLink key={item.path} to={item.path} end={item.end} className={({ isActive }) => `admin-nav-link ${isActive ? 'active' : ''}`} title={label(item, ar)}>
             <span className="admin-nav-icon"><Icon size={19}/></span><span className="admin-nav-label">{label(item, ar)}</span>{badge > 0 && <em>{badge > 99 ? '99+' : badge}</em>}
           </NavLink>;
-        })}
+        })}</div>)}
       </nav>
       <div className="admin-sidebar-foot">
         <a className="admin-nav-link" href="/store" target="_blank" rel="noreferrer"><span className="admin-nav-icon"><ExternalLink size={18}/></span><span className="admin-nav-label">{ar ? 'معاينة المتجر' : 'Preview store'}</span></a><a className="admin-nav-link" href="/" target="_blank" rel="noreferrer"><span className="admin-nav-icon"><ExternalLink size={18}/></span><span className="admin-nav-label">{ar ? 'عرض الموقع' : 'View website'}</span></a>
@@ -192,10 +180,11 @@ export default function AdminLayout({ lang, setLang, session }) {
     <div className="admin-workspace">
       <header className="admin-topbar">
         <div className="admin-topbar-title">
-          <button className="admin-icon-button admin-mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={20}/></button>
+          <button className="admin-icon-button admin-mobile-menu" onClick={() => setMobileOpen(true)} aria-label={ar ? 'فتح قائمة الإدارة' : 'Open admin navigation'} aria-expanded={mobileOpen}><Menu size={20}/></button>
           <div><small>{ar ? 'مركز التحكم' : 'CONTROL CENTER'}</small><h1>{label(current, ar)}</h1></div>
         </div>
         <div className="admin-topbar-actions">
+          <Link className={`admin-store-pill ${settingsError ? 'unknown' : systemSettings.store.enabled ? 'live' : 'closed'}`} to="/admin/settings?tab=store"><i/>{settingsError ? (ar ? 'تحقق من الاتصال' : 'Check connection') : systemSettings.store.enabled ? (ar ? 'المتجر مفتوح' : 'Store open') : (ar ? 'المتجر متوقف' : 'Store closed')}</Link>
           <button className="admin-command-trigger" onClick={() => setPaletteOpen(true)}><Search size={16}/><span>{ar ? 'بحث سريع…' : 'Quick search…'}</span><kbd><Command size={12}/>K</kbd></button>
           <button className="admin-icon-button" onClick={() => setLang(ar ? 'en' : 'ar')} title={ar ? 'English' : 'العربية'}>{ar ? 'EN' : 'ع'}</button>
           <button className="admin-icon-button" onClick={() => navigate('/admin/notifications')} title={ar ? 'الإشعارات' : 'Notifications'}><Bell size={18}/>{badges.notifications > 0 && <i/>}</button>
@@ -203,11 +192,16 @@ export default function AdminLayout({ lang, setLang, session }) {
         </div>
       </header>
 
-      <main className="admin-content">
-        <Routes>
+      <main className="admin-content" id="admin-main">
+        {actionError && <div className="admin-feedback error" role="alert">{actionError}</div>}
+        <AdminErrorBoundary key={location.pathname} lang={lang}><Routes>
           <Route index element={<AdminDashboard lang={lang} onRefreshBadges={refreshBadges}/>}/>
+          <Route path="pages" element={<AdminPageHub lang={lang}/>}/>
+          <Route path="products" element={<Navigate to="/admin/catalog" replace/>}/>
+          <Route path="store" element={<Navigate to="/admin/settings?tab=store" replace/>}/>
           <Route path="users" element={<AdminUsers lang={lang}/>}/>
           <Route path="service-requests" element={<AdminServiceRequests lang={lang}/>}/>
+          <Route path="quote-requests" element={<AdminQuoteRequests lang={lang}/>}/>
           <Route path="organization-team" element={<AdminOrganizationTeam lang={lang}/>}/>
           <Route path="organization-settings" element={<AdminOrganizationSettings lang={lang}/>}/>
           <Route path="orders" element={<AdminOrders lang={lang}/>}/>
@@ -226,17 +220,19 @@ export default function AdminLayout({ lang, setLang, session }) {
           <Route path="settings" element={<AdminSettings lang={lang}/>}/>
           <Route path="profile" element={<AdminProfile lang={lang} session={session}/>}/>
           <Route path="*" element={<AdminDashboard lang={lang} onRefreshBadges={refreshBadges}/>}/>
-        </Routes>
+        </Routes></AdminErrorBoundary>
       </main>
       <footer className="admin-footer"><span>© {new Date().getFullYear()} BALQEES FLORAL · CONTROL CENTER</span><span><MoonStar size={13}/>{ar ? 'مكة المكرمة' : 'MAKKAH'}</span></footer>
     </div>
 
-    {paletteOpen && <div className="admin-command-overlay" role="dialog" aria-modal="true" onMouseDown={e => { if (e.target === e.currentTarget) setPaletteOpen(false); }}>
+    {paletteOpen && <div className="admin-command-overlay" role="dialog" aria-modal="true" aria-label={ar ? 'البحث في جميع الصفحات' : 'Search all pages'} onMouseDown={e => { if (e.target === e.currentTarget) setPaletteOpen(false); }}>
       <div className="admin-command-panel">
         <div className="admin-command-search"><Search size={18}/><input autoFocus value={paletteQuery} onChange={e => setPaletteQuery(e.target.value)} placeholder={ar ? 'ابحث عن صفحة أو وظيفة…' : 'Search pages and actions…'}/><button onClick={() => setPaletteOpen(false)}><X size={17}/></button></div>
         <div className="admin-command-section"><small>{ar ? 'انتقال سريع' : 'QUICK NAVIGATION'}</small>{paletteItems.map(item => { const Icon = item.icon; return <button key={item.path} onClick={() => go(item.path)}><span><Icon size={18}/>{label(item, ar)}</span><ChevronLeft size={16}/></button>; })}</div>
+        <div className="admin-command-section"><small>{ar ? 'إدارة صفحات الموقع والبوابات' : 'WEBSITE & PORTAL MANAGEMENT'}</small>{connectedItems.map(item => { const Icon = item.icon; return <button key={`${item.group}-${item.path}`} onClick={() => go(item.manage)}><span><Icon size={18}/>{label(item, ar)}<small dir="ltr">{item.path}</small></span><ChevronLeft size={16}/></button>; })}</div>
+        {!paletteItems.length && !connectedItems.length && <p className="admin-empty-inline">{ar ? 'لا توجد نتيجة مطابقة.' : 'No matching results.'}</p>}
         <div className="admin-command-shortcuts">
-          <button onClick={() => go('/admin/catalog')}><Boxes size={17}/>{ar ? 'إضافة منتج' : 'Add product'}</button>
+          <button onClick={() => go('/admin/catalog?new=product')}><Boxes size={17}/>{ar ? 'إضافة منتج' : 'Add product'}</button>
           <button onClick={() => go('/admin/service-requests')}><ClipboardPlus size={17}/>{ar ? 'طلبات المنشآت' : 'B2B requests'}</button>
           <button onClick={() => go('/admin/quotes')}><FileText size={17}/>{ar ? 'عرض سعر جديد' : 'New quotation'}</button>
           <button onClick={() => go('/admin/financial-docs')}><ReceiptText size={17}/>{ar ? 'إضافة مستند رسمي' : 'Add official document'}</button>

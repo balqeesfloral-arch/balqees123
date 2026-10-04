@@ -1,126 +1,109 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  ArrowUpLeft,
-  BadgePercent,
-  BellRing,
-  Boxes,
-  CircleAlert,
-  CircleCheck,
-  Clock3,
-  Gift,
-  MessageSquareText,
-  PackageSearch,
-  RefreshCw,
-  Sparkles,
-  TrendingUp,
-  UserPlus,
-  UsersRound,
-} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowUpLeft, Boxes, CircleAlert, ClipboardPlus, Clock3, Globe2, MessageSquareText, PackageSearch, Plus, RefreshCw, Sparkles, UsersRound } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { dateTime, money } from '../adminUtils';
+import { ADMIN_GROUPS, ADMIN_NAV } from '../adminNavigation';
+import AdminStoreStatus from '../AdminStoreStatus';
+import useAdminLiveRefresh from '../useAdminLiveRefresh';
 
-const emptyStats = { users: 0, products: 0, orders: 0, openSupport: 0, activeOffers: 0, draftNotifications: 0 };
+const WATCHED = ['products', 'product_categories', 'orders', 'customer_profiles', 'organization_service_requests', 'support_conversations', 'notifications','quote_requests'];
+const STATUS = {
+  under_review: ['قيد المراجعة', 'Under review'], approved: ['معتمد', 'Approved'], in_progress: ['قيد التجهيز', 'Preparing'], ready: ['جاهز للتسليم', 'Ready'], out_for_delivery: ['في الطريق', 'Out for delivery'], quoted: ['تمت مراجعة التسعير', 'Pricing reviewed'], delivery_failed_payment: ['تعثر السداد', 'Payment issue'], pending: ['بانتظار المراجعة', 'Pending'], confirmed: ['مؤكد', 'Confirmed'], processing: ['قيد التجهيز', 'Processing'],
+  preparing: ['قيد التجهيز', 'Preparing'], shipped: ['في الطريق', 'Shipped'], delivered: ['تم التسليم', 'Delivered'],
+  completed: ['مكتمل', 'Completed'], cancelled: ['ملغي', 'Cancelled'], open: ['مفتوح', 'Open'],
+  submitted: ['مرسل', 'Submitted'], closed: ['مغلق', 'Closed'], resolved: ['تم الحل', 'Resolved'],
+};
+const statusLabel = (value, ar) => STATUS[value]?.[ar ? 0 : 1] || value || '—';
+const formatCount = (value, ar) => value === null || value === undefined ? '—' : Number(value).toLocaleString(ar ? 'ar-SA' : 'en-US');
 
 export default function AdminDashboard({ lang, onRefreshBadges }) {
   const ar = lang === 'ar';
-  const navigate = useNavigate();
-  const [stats, setStats] = useState(emptyStats);
-  const [recentUsers, setRecentUsers] = useState([]);
-  const [recentOrders, setRecentOrders] = useState([]);
-  const [recentSupport, setRecentSupport] = useState([]);
+  const [snapshot, setSnapshot] = useState({});
+  const [failures, setFailures] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [updatedAt, setUpdatedAt] = useState(new Date());
-
-  async function load() {
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const sequence = useRef(0);
+  const load = useCallback(async () => {
+    const request = ++sequence.current;
     setLoading(true);
-    const [users, products, orders, support, offers, notifications, usersRows, ordersRows, supportRows] = await Promise.all([
-      supabase.from('customer_profiles').select('id', { count: 'exact', head: true }),
-      supabase.from('products').select('id', { count: 'exact', head: true }),
-      supabase.from('orders').select('id', { count: 'exact', head: true }),
-      supabase.from('support_conversations').select('id', { count: 'exact', head: true }).in('status', ['open','pending']),
-      supabase.from('offers').select('id', { count: 'exact', head: true }).eq('is_active', true),
-      supabase.from('notifications').select('id', { count: 'exact', head: true }).in('status', ['draft','scheduled']),
-      supabase.from('customer_profiles').select('id,full_name,email,account_type,establishment_display_name,created_at').order('created_at', { ascending: false }).limit(5),
-      supabase.from('orders').select('id,order_number,user_id,status,total,created_at').order('created_at', { ascending: false }).limit(5),
-      supabase.from('support_conversations').select('id,user_id,subject,status,priority,last_message_at').order('last_message_at', { ascending: false }).limit(5),
-    ]);
-
-    setStats({
-      users: users.count || 0,
-      products: products.count || 0,
-      orders: orders.count || 0,
-      openSupport: support.count || 0,
-      activeOffers: offers.count || 0,
-      draftNotifications: notifications.count || 0,
+    const count = table => supabase.from(table).select('id', { count: 'exact', head: true });
+    const jobs = [
+      ['users', count('customer_profiles'), true],
+      ['orders', count('orders'), true],
+      ['products', count('products'), true],
+      ['published', count('products').eq('is_active', true).eq('visibility', 'public'), true],
+      ['drafts', count('products').eq('visibility', 'draft'), true],
+      ['outOfStock', count('products').eq('stock_mode', 'tracked').lte('stock_quantity', 0).eq('is_active', true), true],
+      ['missingImages', count('products').is('image_url', null).eq('is_active', true).eq('visibility', 'public'), true],
+      ['categories', count('product_categories').eq('is_active', true), true],
+      ['support', count('support_conversations').in('status', ['open', 'pending']), true],
+      ['requests', count('organization_service_requests').eq('status', 'submitted'), true],
+      ['quoteRequests',count('quote_requests').in('status',['submitted','in_review']),true],
+      ['notifications', count('notifications').in('status', ['draft', 'scheduled']), true],
+      ['pendingOrders', count('orders').in('status', ['pending', 'under_review', 'approved', 'in_progress', 'ready', 'out_for_delivery']), true],
+      ['recentOrders', supabase.from('orders').select('id,order_number,status,total,created_at').order('created_at', { ascending: false }).limit(5)],
+      ['recentSupport', supabase.from('support_conversations').select('id,subject,status,priority,last_message_at').order('last_message_at', { ascending: false }).limit(5)],
+      ['recentProducts', supabase.from('products').select('id,name_ar,name_en,slug,base_price,image_url,is_active,visibility,stock_mode,stock_quantity').order('created_at', { ascending: false }).limit(4)],
+    ];
+    const results = await Promise.allSettled(jobs.map(([, query]) => query));
+    if (request !== sequence.current) return;
+    const next = {}, failed = [];
+    results.forEach((result, i) => {
+      const [key, , isCount] = jobs[i];
+      const response = result.status === 'fulfilled' ? result.value : { error: result.reason };
+      if (response.error || (isCount && response.count === null)) { failed.push(key); next[key] = null; }
+      else next[key] = isCount ? response.count : response.data || [];
     });
-    setRecentUsers(usersRows.data || []);
-    setRecentOrders(ordersRows.data || []);
-    setRecentSupport(supportRows.data || []);
-    setUpdatedAt(new Date());
+    setSnapshot(next);
+    setFailures(failed);
+    setUpdatedAt(failed.length === jobs.length ? null : new Date());
     setLoading(false);
     onRefreshBadges?.();
-  }
+  }, [onRefreshBadges]);
+  useEffect(() => { load(); return () => { ++sequence.current; }; }, [load]);
+  useAdminLiveRefresh(load, WATCHED);
 
-  useEffect(() => { load(); }, []);
-
-  const today = useMemo(() => {
-    const greg = new Intl.DateTimeFormat(ar ? 'ar-SA' : 'en-GB', { dateStyle: 'full', timeZone: 'Asia/Riyadh' }).format(new Date());
-    let hijri = '';
-    try { hijri = new Intl.DateTimeFormat(ar ? 'ar-SA-u-ca-islamic-umalqura' : 'en-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }).format(new Date()); } catch { /* noop */ }
-    return { greg, hijri };
-  }, [ar]);
-
-  const cards = [
-    { key: 'users', value: stats.users, icon: UsersRound, title: ar ? 'المستخدمون' : 'Users', hint: ar ? 'حساب مسجل' : 'registered accounts', path: '/admin/users' },
-    { key: 'orders', value: stats.orders, icon: PackageSearch, title: ar ? 'الطلبات' : 'Orders', hint: ar ? 'طلب في النظام' : 'orders in system', path: '/admin/orders' },
-    { key: 'products', value: stats.products, icon: Boxes, title: ar ? 'المنتجات' : 'Products', hint: ar ? 'منتج مُدار' : 'managed products', path: '/admin/catalog' },
-    { key: 'support', value: stats.openSupport, icon: MessageSquareText, title: ar ? 'التواصل المفتوح' : 'Open support', hint: ar ? 'محادثة تحتاج متابعة' : 'conversations to review', path: '/admin/support', alert: stats.openSupport > 0 },
+  const stats = [
+    { key: 'orders', icon: PackageSearch, ar: 'الطلبات', en: 'Orders', hint: ar ? 'طلبات الأفراد والمنشآت' : 'Individual & organization orders', path: '/admin/orders' },
+    { key: 'published', icon: Boxes, ar: 'منتجات منشورة', en: 'Published products', hint: ar ? 'ظاهرة في المتجر' : 'Visible in the store', path: '/admin/catalog?filter=published' },
+    { key: 'users', icon: UsersRound, ar: 'حسابات العملاء', en: 'Customer accounts', hint: ar ? 'الأفراد والمنشآت' : 'Individuals & organizations', path: '/admin/users' },
+    { key: 'requests', icon: ClipboardPlus, ar: 'طلبات المنشآت', en: 'B2B requests', hint: ar ? 'بانتظار المراجعة' : 'Awaiting review', path: '/admin/service-requests' },
   ];
-
-  const signals = [
-    stats.products === 0 ? { icon: Boxes, tone: 'warn', title: ar ? 'الكتالوج جاهز للبداية' : 'Catalog is ready to start', text: ar ? 'قاعدة المنتجات والأصناف جاهزة، ولم تتم إضافة منتجات بعد.' : 'Product and category infrastructure is ready; no products have been added yet.', path: '/admin/catalog' } : null,
-    stats.openSupport > 0 ? { icon: CircleAlert, tone: 'danger', title: ar ? 'يوجد تواصل يحتاج اهتمامك' : 'Support needs attention', text: ar ? `${stats.openSupport} محادثة مفتوحة أو معلّقة.` : `${stats.openSupport} open or pending conversations.`, path: '/admin/support' } : { icon: CircleCheck, tone: 'good', title: ar ? 'صندوق التواصل هادئ' : 'Support inbox is clear', text: ar ? 'لا توجد محادثات مفتوحة حاليًا.' : 'There are no open support conversations right now.', path: '/admin/support' },
-    stats.draftNotifications > 0 ? { icon: BellRing, tone: 'info', title: ar ? 'إشعارات بانتظار الإرسال' : 'Notifications awaiting delivery', text: ar ? `${stats.draftNotifications} إشعار مسودة أو مجدول.` : `${stats.draftNotifications} draft or scheduled notifications.`, path: '/admin/notifications' } : null,
-    stats.activeOffers > 0 ? { icon: Gift, tone: 'good', title: ar ? 'العروض النشطة' : 'Active offers', text: ar ? `${stats.activeOffers} عرض ظاهر حاليًا.` : `${stats.activeOffers} offer(s) currently active.`, path: '/admin/offers' } : null,
-  ].filter(Boolean);
+  const tasks = [
+    { key:'quoteRequests',icon:ClipboardPlus,ar:'طلبات خدمات وتسعير',en:'Service & pricing requests',path:'/admin/quote-requests' },
+    { key: 'pendingOrders', icon: PackageSearch, ar: 'طلبات تحتاج متابعة', en: 'Orders to follow up', path: '/admin/orders' },
+    { key: 'support', icon: MessageSquareText, ar: 'محادثات مفتوحة', en: 'Open conversations', path: '/admin/support' },
+    { key: 'drafts', icon: Boxes, ar: 'منتجات مسودة', en: 'Draft products', path: '/admin/catalog?filter=draft' },
+    { key: 'outOfStock', icon: CircleAlert, ar: 'منتجات نفد مخزونها', en: 'Out-of-stock products', path: '/admin/catalog?filter=out-of-stock' },
+    { key: 'missingImages', icon: Sparkles, ar: 'منتجات تحتاج صورًا', en: 'Products needing photos', path: '/admin/catalog?filter=missing-images' },
+    { key: 'notifications', icon: Globe2, ar: 'إشعارات تنتظر النشر', en: 'Notifications awaiting publishing', path: '/admin/notifications' },
+  ];
+  const today = new Intl.DateTimeFormat(ar ? 'ar-SA' : 'en-GB', { dateStyle: 'full', timeZone: 'Asia/Riyadh', calendar: 'gregory' }).format(new Date());
 
   return <div className="admin-page admin-dashboard-page">
-    <section className="admin-hero-panel">
-      <div className="admin-hero-copy"><span><Sparkles size={15}/>{ar ? 'لوحة القيادة الذكية' : 'INTELLIGENT CONTROL CENTER'}</span><h2>{ar ? 'كل شيء أمامك، بدون ضوضاء.' : 'Everything in view, without the noise.'}</h2><p>{ar ? 'إدارة العملاء والمنتجات والطلبات والعروض والتواصل من مركز واحد مصمم لاتخاذ القرار بسرعة.' : 'Manage clients, catalog, orders, offers and communication from one decision-focused control center.'}</p><div className="admin-date-line"><Clock3 size={15}/><span>{today.greg}</span>{today.hijri && <em>{today.hijri}</em>}</div></div>
-      <div className="admin-hero-actions"><button className="admin-primary-button" onClick={() => navigate('/admin/catalog')}><Boxes size={17}/>{ar ? 'إضافة منتج' : 'Add product'}</button><button className="admin-secondary-button" onClick={() => navigate('/admin/notifications')}><BellRing size={17}/>{ar ? 'إنشاء إشعار' : 'Create notification'}</button><button className="admin-icon-button" onClick={load} title={ar ? 'تحديث' : 'Refresh'}><RefreshCw className={loading ? 'spin' : ''} size={18}/></button></div>
+    <section className="admin-command-hero">
+      <img className="admin-command-watermark" src="/assets/brand/balqees-symbol.webp" alt="" aria-hidden="true"/>
+      <div className="admin-command-hero-copy"><span><Sparkles size={16}/>{ar ? 'بلقيس الورد · مركز القيادة' : 'BALQEES FLORAL · COMMAND CENTER'}</span><h2>{ar ? 'إدارة تليق باسم بلقيس' : 'A workspace worthy of Balqees'}</h2><p>{ar ? 'متجرك، عملاؤك وشراكاتك في رؤية واحدة. كل صفحة مرتبطة، وكل قرار يبدأ من بياناتها.' : 'Your store, customers and partnerships in one view. Every page connected, every decision informed.'}</p><div className="admin-command-date"><Clock3 size={15}/><span>{today}</span><span>مكة المكرمة</span></div><div className="admin-command-hero-actions"><Link className="admin-primary-button" to="/admin/catalog?new=product"><Plus size={17}/>{ar ? 'إضافة منتج' : 'Add product'}</Link><Link className="admin-secondary-button" to="/admin/pages"><Globe2 size={17}/>{ar ? 'جميع الصفحات' : 'All pages'}</Link></div></div>
+      <div className="admin-command-hero-visual" aria-hidden="true"><img src="/assets/home/floral-signature.webp" alt=""/><span>BALQEES<br/>FLORAL</span></div>
     </section>
 
-    <section className="admin-stat-grid">
-      {cards.map(card => { const Icon = card.icon; return <button key={card.key} className={`admin-stat-card ${card.alert ? 'attention' : ''}`} onClick={() => navigate(card.path)}><div className="admin-stat-card-top"><span><Icon size={20}/></span><TrendingUp size={16}/></div><strong>{loading ? '—' : card.value.toLocaleString(ar ? 'ar-SA' : 'en-US')}</strong><h3>{card.title}</h3><p>{card.hint}</p><i><ArrowUpLeft size={15}/></i></button>; })}
-    </section>
+    <div className="admin-overview-bar"><div><i className={failures.length ? 'warning' : loading ? 'syncing' : ''}/><span>{loading ? (ar ? 'جاري تحديث البيانات' : 'Refreshing data') : failures.length ? (ar ? 'بعض البيانات غير متاحة' : 'Some data is unavailable') : (ar ? 'متصل ببيانات النظام' : 'Connected to system data')}</span>{updatedAt && <time>{dateTime(updatedAt, lang)}</time>}</div><button className="admin-secondary-button" onClick={load} disabled={loading}><RefreshCw size={15} className={loading ? 'spin' : ''}/>{ar ? 'تحديث' : 'Refresh'}</button></div>
+    {!!failures.length && <div className="admin-feedback error" role="alert"><CircleAlert size={18}/><span>{ar ? 'تعذر تحميل جزء من البيانات. الأقسام غير المتاحة تظهر بشرطة؛ أعد التحديث أو افتح القسم المعني.' : 'Some data could not load. Unavailable values appear as a dash; refresh or open the relevant section.'}</span></div>}
+    <section className="admin-stat-grid">{stats.map(item => { const Icon = item.icon; return <Link key={item.key} to={item.path} className="admin-stat-card"><div className="admin-stat-card-top"><span><Icon size={21}/></span><ArrowUpLeft size={17}/></div><strong>{loading ? '—' : formatCount(snapshot[item.key], ar)}</strong><h3>{ar ? item.ar : item.en}</h3><p>{item.hint}</p></Link>; })}</section>
+    <AdminStoreStatus lang={lang} published={snapshot.published ?? null}/>
 
-    <div className="admin-dashboard-grid">
-      <section className="admin-panel admin-smart-panel">
-        <div className="admin-panel-head"><div><small>{ar ? 'قراءة سريعة' : 'SMART SIGNALS'}</small><h3>{ar ? 'ما الذي يحتاج انتباهك؟' : 'What needs your attention?'}</h3></div><Sparkles size={20}/></div>
-        <div className="admin-signal-list">{signals.map((signal, i) => { const Icon = signal.icon; return <button className={`admin-signal ${signal.tone}`} key={i} onClick={() => navigate(signal.path)}><span><Icon size={18}/></span><div><strong>{signal.title}</strong><p>{signal.text}</p></div><ArrowUpLeft size={16}/></button>; })}</div>
-      </section>
-
-      <section className="admin-panel">
-        <div className="admin-panel-head"><div><small>{ar ? 'اختصارات' : 'QUICK ACTIONS'}</small><h3>{ar ? 'ابدأ المهمة مباشرة' : 'Start a task immediately'}</h3></div></div>
-        <div className="admin-quick-grid">
-          <button onClick={() => navigate('/admin/users')}><UserPlus size={20}/><span>{ar ? 'إدارة المستخدمين' : 'Manage users'}</span></button>
-          <button onClick={() => navigate('/admin/discounts')}><BadgePercent size={20}/><span>{ar ? 'خصم جديد' : 'New discount'}</span></button>
-          <button onClick={() => navigate('/admin/offers')}><Gift size={20}/><span>{ar ? 'إدارة العروض' : 'Manage offers'}</span></button>
-          <button onClick={() => navigate('/admin/support')}><MessageSquareText size={20}/><span>{ar ? 'فتح التواصل' : 'Open inbox'}</span></button>
-        </div>
-      </section>
+    <div className="admin-command-grid">
+      <section className="admin-panel admin-action-queue"><div className="admin-panel-head"><div><small>{ar ? 'أولويات اليوم' : 'TODAY’S PRIORITIES'}</small><h3>{ar ? 'خطوتك التالية' : 'Your next step'}</h3></div><Sparkles size={21}/></div><div className="admin-task-grid">{tasks.map(item => { const Icon = item.icon; const value = snapshot[item.key]; return <Link to={item.path} key={item.key} className={value > 0 ? 'needs-attention' : ''}><span><Icon size={18}/>{ar ? item.ar : item.en}</span><strong>{loading ? '—' : formatCount(value, ar)}</strong><ArrowUpLeft size={15}/></Link>; })}</div>{snapshot.categories === 0 && <Link className="admin-category-prompt" to="/admin/catalog?tab=categories">{ar ? 'أضف أصنافًا لتنظيم المتجر وتسهيل التصفية.' : 'Add categories to organize the store and make filtering easier.'}<ArrowUpLeft size={16}/></Link>}</section>
+      <section className="admin-panel admin-catalog-preview"><div className="admin-panel-head"><div><small>{ar ? 'من الكتالوج المركزي' : 'CENTRAL CATALOG'}</small><h3>{ar ? 'آخر المنتجات' : 'Latest products'}</h3></div><Link to="/admin/catalog">{ar ? 'إدارة الكل' : 'Manage all'}</Link></div>{snapshot.recentProducts?.length ? <div>{snapshot.recentProducts.map(product => <Link key={product.id} to={`/admin/catalog?edit=${product.id}`}><span className="admin-product-thumb">{product.image_url ? <img src={product.image_url} alt=""/> : <Boxes size={23}/>}</span><div><strong>{ar ? product.name_ar : product.name_en || product.name_ar}</strong><small>{product.is_active && product.visibility === 'public' ? (ar ? 'منشور' : 'Published') : (ar ? 'غير منشور' : 'Unpublished')} · {product.base_price === null ? (ar ? 'حسب الطلب' : 'On request') : money(product.base_price, lang)}</small></div><ArrowUpLeft size={16}/></Link>)}</div> : <Empty ar={ar} unavailable={snapshot.recentProducts === null} loading={loading}/>}</section>
     </div>
 
-    <div className="admin-dashboard-grid three-columns">
-      <section className="admin-panel admin-table-panel"><div className="admin-panel-head"><div><small>{ar ? 'أحدث الحسابات' : 'LATEST ACCOUNTS'}</small><h3>{ar ? 'المستخدمون الجدد' : 'New users'}</h3></div><button onClick={() => navigate('/admin/users')}>{ar ? 'عرض الكل' : 'View all'}</button></div>{recentUsers.length ? <div className="admin-mini-list">{recentUsers.map(user => <button key={user.id} onClick={() => navigate('/admin/users')}><span className="admin-mini-avatar">{(user.full_name || user.email || 'B')[0]}</span><div><strong>{user.full_name || user.email || '—'}</strong><small>{user.establishment_display_name || (user.account_type === 'company' ? (ar ? 'منشأة' : 'Organization') : (ar ? 'فردي' : 'Individual'))}</small></div><time>{dateTime(user.created_at, lang)}</time></button>)}</div> : <Empty text={ar ? 'لا توجد حسابات حتى الآن.' : 'No accounts yet.'}/>}</section>
-      <section className="admin-panel admin-table-panel"><div className="admin-panel-head"><div><small>{ar ? 'المبيعات والطلبات' : 'ORDERS'}</small><h3>{ar ? 'آخر الطلبات' : 'Latest orders'}</h3></div><button onClick={() => navigate('/admin/orders')}>{ar ? 'عرض الكل' : 'View all'}</button></div>{recentOrders.length ? <div className="admin-mini-list">{recentOrders.map(order => <button key={order.id} onClick={() => navigate('/admin/orders')}><span className="admin-mini-avatar order">#{order.order_number}</span><div><strong>{money(order.total, lang)}</strong><small>{order.status}</small></div><time>{dateTime(order.created_at, lang)}</time></button>)}</div> : <Empty text={ar ? 'لا توجد طلبات بعد.' : 'No orders yet.'}/>}</section>
-      <section className="admin-panel admin-table-panel"><div className="admin-panel-head"><div><small>{ar ? 'صندوق التواصل' : 'COMMUNICATION'}</small><h3>{ar ? 'آخر المحادثات' : 'Recent conversations'}</h3></div><button onClick={() => navigate('/admin/support')}>{ar ? 'فتح الصندوق' : 'Open inbox'}</button></div>{recentSupport.length ? <div className="admin-mini-list">{recentSupport.map(item => <button key={item.id} onClick={() => navigate('/admin/support')}><span className={`admin-mini-avatar support ${item.priority}`}>{item.priority === 'urgent' ? '!' : '•'}</span><div><strong>{item.subject}</strong><small>{item.status} · {item.priority}</small></div><time>{dateTime(item.last_message_at, lang)}</time></button>)}</div> : <Empty text={ar ? 'لا توجد محادثات حاليًا.' : 'No conversations right now.'}/>}</section>
-    </div>
+    <section className="admin-panel admin-workspace-directory"><div className="admin-panel-head"><div><small>{ar ? 'مساحة عمل مترابطة' : 'CONNECTED WORKSPACE'}</small><h3>{ar ? 'كل أقسام الإدارة' : 'All admin modules'}</h3></div><Link to="/admin/pages">{ar ? 'خريطة صفحات الموقع' : 'Website page map'}<ArrowUpLeft size={16}/></Link></div><div className="admin-module-groups">{ADMIN_GROUPS.filter(group => group.id !== 'command').map(group => <div key={group.id}><h4>{ar ? group.ar : group.en}</h4>{ADMIN_NAV.filter(item => item.group === group.id).map(item => { const Icon = item.icon; return <Link to={item.path} key={item.path}><Icon size={17}/><span>{ar ? item.ar : item.en}</span><ArrowUpLeft size={14}/></Link>; })}</div>)}</div></section>
 
-    <div className="admin-last-sync">{ar ? 'آخر تحديث' : 'Last updated'}: {dateTime(updatedAt, lang)}</div>
+    <div className="admin-command-grid">
+      <section className="admin-panel"><div className="admin-panel-head"><div><small>{ar ? 'الأفراد والمنشآت' : 'INDIVIDUALS & ORGANIZATIONS'}</small><h3>{ar ? 'أحدث الطلبات' : 'Recent orders'}</h3></div><Link to="/admin/orders">{ar ? 'عرض الكل' : 'View all'}</Link></div>{snapshot.recentOrders?.length ? <div className="admin-command-feed">{snapshot.recentOrders.map(order => <Link key={order.id} to={`/admin/orders?order=${order.id}`}><span className="admin-feed-icon"><PackageSearch size={20}/></span><div><strong>#{order.order_number}</strong><small>{statusLabel(order.status, ar)} · {dateTime(order.created_at, lang)}</small></div><b>{money(order.total, lang)}</b></Link>)}</div> : <Empty ar={ar} unavailable={snapshot.recentOrders === null} loading={loading}/>}</section>
+      <section className="admin-panel"><div className="admin-panel-head"><div><small>{ar ? 'مركز عناية بلقيس' : 'BALQEES CARE CENTER'}</small><h3>{ar ? 'آخر المحادثات' : 'Recent conversations'}</h3></div><Link to="/admin/support">{ar ? 'فتح التواصل' : 'Open inbox'}</Link></div>{snapshot.recentSupport?.length ? <div className="admin-command-feed">{snapshot.recentSupport.map(item => <Link key={item.id} to="/admin/support"><span className="admin-feed-icon"><MessageSquareText size={20}/></span><div><strong>{item.subject}</strong><small>{statusLabel(item.status, ar)} · {dateTime(item.last_message_at, lang)}</small></div><ArrowUpLeft size={16}/></Link>)}</div> : <Empty ar={ar} unavailable={snapshot.recentSupport === null} loading={loading}/>}</section>
+    </div>
   </div>;
 }
-
-function Empty({ text }) { return <div className="admin-empty-inline"><FileTextIcon/><span>{text}</span></div>; }
-function FileTextIcon() { return <span className="admin-empty-icon"><Boxes size={20}/></span>; }
+function Empty({ ar, unavailable, loading }) { return <div className="admin-empty-inline"><Boxes size={22}/><span>{loading ? (ar ? 'جاري القراءة…' : 'Loading…') : unavailable ? (ar ? 'تعذرت قراءة البيانات.' : 'Data could not be read.') : (ar ? 'لا توجد سجلات بعد.' : 'No records yet.')}</span></div>; }

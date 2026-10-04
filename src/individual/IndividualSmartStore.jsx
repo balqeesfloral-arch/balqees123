@@ -6,6 +6,8 @@ import {
   PackageSearch, Plus, Search, ShoppingBag, SlidersHorizontal, Sparkles, Store,
   Tag, UserRound, WandSparkles, X,
 } from 'lucide-react';
+import { useSystemSettings } from '../lib/systemSettings';
+import useLiveDataRefresh from '../lib/useLiveDataRefresh';
 import BrandMark from '../components/BrandMark';
 import { supabase } from '../lib/supabase';
 import { useBalqeesCart } from '../lib/cart';
@@ -103,6 +105,7 @@ function productBadge(product, rules, ar) {
 
 export default function IndividualSmartStore({ lang, session }) {
   const ar = lang === 'ar'; const navigate = useNavigate(); const location = useLocation(); const uid = session?.user?.id;
+  const { settings: systemSettings, loading: settingsLoading, error: settingsError } = useSystemSettings();
   const cart = useBalqeesCart(uid || null); const Arrow = ar ? ArrowLeft : ArrowRight;
   const [products,setProducts]=useState([]); const [categories,setCategories]=useState([]); const [rules,setRules]=useState([]);
   const [favorites,setFavorites]=useState([]); const [interests,setInterests]=useState([]); const [orders,setOrders]=useState([]); const [occasions,setOccasions]=useState([]); const [popularIds,setPopularIds]=useState([]);
@@ -158,7 +161,7 @@ export default function IndividualSmartStore({ lang, session }) {
   },[filters.budget,contextBudgetKey]);
 
   async function load() {
-    if(!uid)return; setLoading(true); setError('');
+    if(!uid){setLoading(false);return;} setLoading(true); setError('');
     const results=await Promise.all([
       supabase.from('products').select('*').eq('visibility','public').eq('is_active',true).order('created_at',{ascending:false}),
       supabase.from('product_categories').select('*').eq('is_active',true).order('sort_order'),
@@ -174,7 +177,8 @@ export default function IndividualSmartStore({ lang, session }) {
     if(firstError) setError(ar?'تعذر تحميل جزء من المتجر الذكي. يمكنك الاستمرار بالمنتجات المتاحة.':'Part of the smart store could not load. You can continue with the available catalog.');
     setProducts(results[0].data||[]); setCategories(results[1].data||[]); setRules(results[2].data||[]); setFavorites(results[3].data||[]); setInterests(results[4].data||[]); setOrders(results[5].data||[]); setOccasions(results[6].data||[]); setPopularIds((results[7].data||[]).map(x=>String(x.product_id))); setPreferences(normalizeCustomerPreferences(results[8]||{})); setLoading(false);
   }
-  useEffect(()=>{load();},[uid]);
+  useEffect(()=>{load();},[uid,systemSettings.store.enabled]);
+  useLiveDataRefresh(() => load(), ['products', 'product_categories', 'price_rules']);
 
   useEffect(()=>{
     if(!uid || !preferences?.personalized_recommendations || query.trim().length<3)return;
@@ -289,6 +293,7 @@ export default function IndividualSmartStore({ lang, session }) {
     return scored.slice(0,5).map(x=>x.product);
   },[assistant,products,categoryById,rules,taste]);
 
+  if (!settingsLoading && (settingsError || !systemSettings.store.enabled)) return <SmartStoreChrome lang={lang} session={session} cart={cart}><main className="individual-main"><div className="individual-shell"><section className="smart-store-empty" role={settingsError ? 'alert' : 'status'}><PackageOpen size={34}/><h2>{settingsError ? (ar ? 'تعذر التحقق من إعدادات المتجر' : 'Store settings are unavailable') : (ar ? 'المتجر متوقف مؤقتًا' : 'Store is temporarily closed')}</h2><Link className="btn primary" to="/account/support">{ar ? 'تواصل مع بلقيس' : 'Contact Balqees'}</Link></section></div></main></SmartStoreChrome>;
   if(loading) return <SmartStoreChrome lang={lang} session={session} cart={cart}><main className="individual-main"><div className="individual-shell"><div className="smart-store-loading"><LoaderCircle className="spin"/><strong>{ar?'نرتّب المتجر لك…':'Preparing your store…'}</strong></div></div></main></SmartStoreChrome>;
 
   const modulesPersonal=preferences?.personalized_recommendations!==false && taste.hasSignals;

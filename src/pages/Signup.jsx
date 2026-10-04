@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { safeQuoteReturn } from '../lib/quoteRequests';
 import {
   ArrowLeft,
   ArrowRight,
@@ -81,6 +82,9 @@ function fieldValue(value) {
 export default function Signup({ lang }) {
   const ar = lang === 'ar';
   const navigate = useNavigate();
+  const location=useLocation();
+  const quoteReturn=safeQuoteReturn(new URLSearchParams(location.search).get('next'));
+  const accountPath=quoteReturn?`/account?next=${encodeURIComponent(quoteReturn)}`:'/account';
   const [form, setForm] = useState(initialForm);
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
@@ -275,7 +279,7 @@ export default function Signup({ lang }) {
       email: cleanEmail(form.email),
       password: form.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/account`,
+        emailRedirectTo: `${window.location.origin}${accountPath}`,
         data: metadata,
       },
     });
@@ -291,7 +295,7 @@ export default function Signup({ lang }) {
     }
 
     if (data.session) {
-      navigate('/account', { replace: true });
+      navigate(accountPath, { replace: true });
     } else {
       setCompleted(true);
       setMessage({ type: 'success', text: ar ? 'تم إنشاء الحساب. أرسلنا رابط التفعيل إلى بريدك الإلكتروني.' : 'Account created. We sent an activation link to your email.' });
@@ -329,7 +333,7 @@ export default function Signup({ lang }) {
         <span>ACCOUNT CREATED</span>
         <h1>{ar ? 'بقيت خطوة واحدة.' : 'One step remains.'}</h1>
         <p>{ar ? `أرسلنا رابط التفعيل إلى ${cleanEmail(form.email)}. بعد تأكيد البريد يمكنك تسجيل الدخول مباشرة.` : `We sent an activation link to ${cleanEmail(form.email)}. After confirming your email, you can sign in.`}</p>
-        <Link className="btn primary" to="/account">{ar ? 'الانتقال إلى تسجيل الدخول' : 'Go to sign in'}<ArrowRight size={17}/></Link>
+        <Link className="btn primary" to={accountPath}>{ar ? 'الانتقال إلى تسجيل الدخول' : 'Go to sign in'}<ArrowRight size={17}/></Link>
       </div>
     </section>;
   }
@@ -351,7 +355,7 @@ export default function Signup({ lang }) {
 
       <main className="signup-main">
         <div className="signup-topline">
-          <Link to="/account" className="signup-login-link"><ArrowLeft size={16}/>{ar ? 'لدي حساب' : 'I have an account'}</Link>
+          <Link to={accountPath} className="signup-login-link"><ArrowLeft size={16}/>{ar ? 'لدي حساب' : 'I have an account'}</Link>
           <span>{ar ? 'إنشاء حساب جديد' : 'CREATE ACCOUNT'}</span>
         </div>
 

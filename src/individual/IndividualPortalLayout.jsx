@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { key: 'home', to: '/account', icon: Home, ar: 'الرئيسية', en: 'Home', section: 'main', exact: true },
   { key: 'store', to: '/store', icon: Store, ar: 'المتجر', en: 'Store', section: 'main' },
   { key: 'orders', to: '/account/orders', icon: PackageSearch, ar: 'طلباتي', en: 'My orders', section: 'main' },
+  { key: 'quote-requests', to: '/request-quote#my-quote-requests', icon: FileText, ar: 'طلبات عروض الأسعار', en: 'Quotation requests', section: 'main' },
   { key: 'cart', to: '/account/cart', icon: ShoppingBag, ar: 'السلة', en: 'Cart', section: 'main', badge: 'cart' },
   { key: 'favorites', to: '/account/favorites', icon: Heart, ar: 'المفضلة', en: 'Favorites', section: 'main' },
   { key: 'addresses', to: '/account/addresses', icon: MapPin, ar: 'العناوين', en: 'Addresses', section: 'organize' },

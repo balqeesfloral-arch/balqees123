@@ -3,6 +3,8 @@ import {
   Check, ClipboardList, Download, FileCheck2, FileText, LoaderCircle, MoreHorizontal,
   PackageCheck, RefreshCw, Search, UploadCloud, X,
 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import useAdminLiveRefresh, { notifyAdminChange } from '../useAdminLiveRefresh';
 import { supabase } from '../../lib/supabase';
 import { dateTime, logAdminAction, money } from '../adminUtils';
 
@@ -29,6 +31,9 @@ function orderReference(order) {
 
 export default function AdminOrders({ lang }) {
   const ar = lang === 'ar';
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [error, setError] = useState('');
   const labels = ar ? statusAr : statusEn;
   const [orders, setOrders] = useState([]);
   const [contracts, setContracts] = useState([]);
@@ -50,7 +55,8 @@ export default function AdminOrders({ lang }) {
 
   async function load() {
     setLoading(true);
-    const [{ data },{ data: contractRows }] = await Promise.all([supabase.from('orders').select('*').order('created_at', { ascending: false }),supabase.from('contracts').select('id,organization_id,contract_number,title_ar,status').neq('status','draft').order('created_at',{ascending:false})]);
+    const [{ data, error: orderError },{ data: contractRows, error: contractError }] = await Promise.all([supabase.from('orders').select('*').order('created_at', { ascending: false }),supabase.from('contracts').select('id,organization_id,contract_number,title_ar,status').neq('status','draft').order('created_at',{ascending:false})]);
+    setError(orderError || contractError ? (ar ? 'تعذر تحميل جزء من الطلبات. حاول مجددًا.' : 'Some order data could not load. Please retry.') : '');
     setContracts(contractRows || []);
     const rows = data || [];
     setOrders(rows);
@@ -62,6 +68,18 @@ export default function AdminOrders({ lang }) {
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+  useAdminLiveRefresh(() => { if (!selected) load(); }, ['orders', 'customer_documents']);
+  useEffect(() => {
+    if (loading) return;
+    const params = new URLSearchParams(location.search);
+    const id = params.get('order');
+    if (!id) return;
+    const order = orders.find(row => row.id === id);
+    if (order) openOrder(order);
+    else setError(ar ? 'الطلب المطلوب غير موجود أو تعذرت قراءته.' : 'This order was not found or could not be read.');
+    params.delete('order');
+    navigate({ pathname: '/admin/orders', search: params.toString() ? `?${params}` : '' }, { replace: true });
+  }, [loading, location.search, orders]);
 
   const filtered = useMemo(() => orders.filter(order => {
     const p = profiles[order.user_id] || {};
@@ -93,8 +111,9 @@ export default function AdminOrders({ lang }) {
     if (!error) {
       await logAdminAction('update_order', 'order', selected.id, { status: draftStatus, contract_id: draftContract || null });
       setSelected(current => current ? { ...current, status: draftStatus, admin_note: adminNote || null } : current);
+      notifyAdminChange('orders');
       await load();
-    }
+    } else setError(ar ? 'تعذر حفظ الطلب. تحقق من الاتصال والصلاحيات.' : 'Could not save the order. Check your connection and permissions.');
   }
 
   function startDocumentUpload() {
@@ -151,6 +170,7 @@ export default function AdminOrders({ lang }) {
   }
 
   return <div className="admin-page">
+    {error && <div className="admin-feedback error" role="alert">{error}</div>}
     <div className="admin-page-head"><div><span>{ar ? 'تدفق الطلبات' : 'ORDER FLOW'}</span><h2>{ar ? 'إدارة الطلبات' : 'Order management'}</h2><p>{ar ? 'إدارة الطلب من الاستلام إلى الإكمال، مع نشر المستندات الرسمية للأفراد من نفس الطلب.' : 'Manage the full order journey and publish official individual documents from the same order.'}</p></div><button className="admin-secondary-button" onClick={load}><RefreshCw className={loading ? 'spin' : ''} size={16}/>{ar ? 'تحديث' : 'Refresh'}</button></div>
     <section className="admin-panel admin-table-shell"><div className="admin-toolbar"><div className="admin-search-field"><Search size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder={ar ? 'رقم الطلب أو العميل…' : 'Order number or client…'}/></div><select className="admin-select-filter" value={status} onChange={e => setStatus(e.target.value)}><option value="all">{ar ? 'كل الحالات' : 'All statuses'}</option>{Object.entries(labels).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select></div>
       <div className="admin-table-responsive"><table className="admin-table"><thead><tr><th>{ar ? 'الطلب' : 'Order'}</th><th>{ar ? 'العميل' : 'Client'}</th><th>{ar ? 'الحالة' : 'Status'}</th><th>{ar ? 'الإجمالي' : 'Total'}</th><th>{ar ? 'التاريخ' : 'Date'}</th><th/></tr></thead><tbody>{filtered.map(order => { const p = profiles[order.user_id] || {}; return <tr key={order.id}><td><strong>{orderReference(order)}</strong></td><td><div className="admin-text-stack"><strong>{p.full_name || p.establishment_display_name || '—'}</strong><small>{p.email || '—'}</small></div></td><td><span className={`admin-order-status ${order.status}`}>{labels[order.status] || order.status}</span></td><td><strong>{money(order.total, lang)}</strong></td><td>{dateTime(order.created_at, lang)}</td><td><button className="admin-row-action" onClick={() => openOrder(order)}><MoreHorizontal size={18}/></button></td></tr>; })}</tbody></table></div>

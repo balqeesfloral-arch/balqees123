@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
-const root=path.resolve(new URL('..',import.meta.url).pathname);
+const root=fileURLToPath(new URL('..',import.meta.url));
 const src=path.join(root,'src');
 const exts=['','.js','.jsx','.mjs','.css','.json','.svg','.png','.jpg','.jpeg','.webp'];
 const files=[];
@@ -24,7 +25,7 @@ const required=[
   'SUPABASE-v10.44-PRODUCTION-HARDENING.sql'
 ];
 for(const rel of required)if(!fs.existsSync(path.join(root,rel)))missing.push(`missing required file: ${rel}`);
-if(pkg.version!=='10.46.0')missing.push(`package version is ${pkg.version}, expected 10.46.0`);
+if(pkg.version!=='10.48.0')missing.push(`package version is ${pkg.version}, expected 10.48.0`);
 if(!html.includes('/favicon.ico'))missing.push('index.html does not declare /favicon.ico');
 if(missing.length){console.error('Source verification FAILED');for(const x of missing)console.error(`- ${x}`);process.exit(1)}
 console.log(`Source verification OK: ${checked} relative imports checked; ${files.length} source files scanned; version ${pkg.version}.`);

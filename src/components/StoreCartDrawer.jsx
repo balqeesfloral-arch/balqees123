@@ -66,6 +66,7 @@ export default function StoreCartDrawer({ lang, open, onClose, rules = [], setti
 
   const map = useMemo(() => Object.fromEntries(products.map(p => [p.id, p])), [products]);
   const lines = useMemo(() => cart.items.map(item => ({ ...item, product: map[item.product_id] })).filter(x => x.product), [cart.items, map]);
+  const hasQuoteItems=lines.some(line=>line.product.price_on_request);
   const estimate = useMemo(() => lines.reduce((sum, line) => {
     const price = resolveProductPrice(line.product, rules).effective;
     return sum + Number(price || 0) * Number(line.quantity || 0);
@@ -82,6 +83,7 @@ export default function StoreCartDrawer({ lang, open, onClose, rules = [], setti
   }
 
   async function checkout() {
+    if(hasQuoteItems){navigate('/request-quote?source=cart');onClose?.();return;}
     if (!session) { navigate('/account'); onClose?.(); return; }
     let isIndividual = !!cartUserId;
     if (!isIndividual && session?.user?.id) {
@@ -119,12 +121,12 @@ export default function StoreCartDrawer({ lang, open, onClose, rules = [], setti
         }) : <div className="store-cart-empty"><ShoppingBag size={30}/><strong>{ar ? 'السلة فارغة' : 'Your cart is empty'}</strong><p>{ar ? 'اختر منتجاتك وسيظهر كل شيء هنا.' : 'Choose products and they will appear here.'}</p></div>}</div>
 
         {!!lines.length && <div className="store-cart-checkout">
-          {!cartUserId && allowCoupons && <div className="store-coupon"><Tag size={16}/><input value={coupon} onChange={e=>setCoupon(e.target.value)} placeholder={ar ? 'كود الخصم' : 'Coupon code'}/><button onClick={applyCoupon} disabled={busy}>{ar ? 'تطبيق' : 'Apply'}</button></div>}
+          {!cartUserId && allowCoupons && !hasQuoteItems && <div className="store-coupon"><Tag size={16}/><input value={coupon} onChange={e=>setCoupon(e.target.value)} placeholder={ar ? 'كود الخصم' : 'Coupon code'}/><button onClick={applyCoupon} disabled={busy}>{ar ? 'تطبيق' : 'Apply'}</button></div>}
           {!cartUserId && error && <div className="store-cart-error">{error}</div>}
           {!cartUserId && <textarea rows="2" value={note} onChange={e=>setNote(e.target.value)} placeholder={ar ? 'ملاحظة على الطلب (اختياري)' : 'Order note (optional)'}/>}
-          <div className="store-cart-summary">{showPrices ? <><div><span>{ar ? 'الإجمالي المبدئي' : 'Estimated subtotal'}</span><strong>{formatSar(quote?.subtotal ?? estimate,lang)}</strong></div>{Number(quote?.discount_total||0)>0&&<div className="discount"><span>{ar?'الخصم':'Discount'}</span><strong>- {formatSar(quote.discount_total,lang)}</strong></div>}{quote&&settings.pricesIncludeVat===false&&Number(quote?.vat_total||0)>0&&<div><span>{ar?'الضريبة':'VAT'}</span><strong>{formatSar(quote.vat_total,lang)}</strong></div>}<div className="total"><span>{ar ? 'الإجمالي' : 'Total'}</span><strong>{formatSar(quote?.total ?? estimate,lang)}</strong></div></> : <div className="total"><span>{ar?'التسعير':'Pricing'}</span><strong>{ar?'بعد المراجعة':'After review'}</strong></div>}<small>{vatNote} {ar ? 'المنتجات «حسب الطلب» تُراجع قبل التسعير النهائي.' : '“On request” items are reviewed before final pricing.'}</small>{Number(settings.minimumOrder||0)>0&&<small>{ar?`الحد الأدنى للطلب ${formatSar(settings.minimumOrder,lang)}.`:`Minimum order ${formatSar(settings.minimumOrder,lang)}.`}</small>}</div>
+          <div className="store-cart-summary">{showPrices&&!hasQuoteItems ? <><div><span>{ar ? 'الإجمالي المبدئي' : 'Estimated subtotal'}</span><strong>{formatSar(quote?.subtotal ?? estimate,lang)}</strong></div>{Number(quote?.discount_total||0)>0&&<div className="discount"><span>{ar?'الخصم':'Discount'}</span><strong>- {formatSar(quote.discount_total,lang)}</strong></div>}{quote&&settings.pricesIncludeVat===false&&Number(quote?.vat_total||0)>0&&<div><span>{ar?'الضريبة':'VAT'}</span><strong>{formatSar(quote.vat_total,lang)}</strong></div>}<div className="total"><span>{ar ? 'الإجمالي' : 'Total'}</span><strong>{formatSar(quote?.total ?? estimate,lang)}</strong></div></> : <div className="total"><span>{ar?'التسعير':'Pricing'}</span><strong>{ar?'بعد المراجعة':'After review'}</strong></div>}<small>{vatNote} {ar ? 'المنتجات «حسب الطلب» تُراجع قبل التسعير النهائي.' : '“On request” items are reviewed before final pricing.'}</small>{Number(settings.minimumOrder||0)>0&&<small>{ar?`الحد الأدنى للطلب ${formatSar(settings.minimumOrder,lang)}.`:`Minimum order ${formatSar(settings.minimumOrder,lang)}.`}</small>}</div>
           {cartUserId && <div className="store-cart-error" style={{background:'#f3f7f1',color:'#496452',borderColor:'#dbe5d9'}}>{ar ? 'هذه معاينة سريعة فقط. الخصومات وفحص السعر والتوفر موجودة في السلة الذكية.' : 'This is a quick preview. Discounts and price/availability checks live in the smart cart.'}</div>}
-          <button className="store-checkout-button" onClick={checkout} disabled={busy}>{busy ? <LoaderCircle className="spin" size={18}/> : <ShoppingBag size={18}/>} {session ? (cartUserId ? (ar ? 'فتح السلة الذكية' : 'Open smart cart') : (ar ? 'إرسال الطلب' : 'Submit order')) : (ar ? 'سجل الدخول لإكمال الطلب' : 'Sign in to checkout')}</button>
+          <button className="store-checkout-button" onClick={checkout} disabled={busy}>{busy ? <LoaderCircle className="spin" size={18}/> : <ShoppingBag size={18}/>} {hasQuoteItems?(ar?'طلب عرض سعر للسلة':'Request a cart quotation'):session ? (cartUserId ? (ar ? 'فتح السلة الذكية' : 'Open smart cart') : (ar ? 'إرسال الطلب' : 'Submit order')) : (ar ? 'سجل الدخول لإكمال الطلب' : 'Sign in to checkout')}</button>
         </div>}
       </>}
     </aside>

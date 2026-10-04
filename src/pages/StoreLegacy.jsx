@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Filter, Heart, LoaderCircle, LockKeyhole, PackageOpen, Search, ShoppingBag, Sparkles, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useBalqeesCart } from '../lib/cart';
 import { formatSar, resolveProductPrice } from '../lib/storePricing';
 import { useSystemSettings } from '../lib/systemSettings';
+import useLiveDataRefresh from '../lib/useLiveDataRefresh';
 import StoreCartDrawer from '../components/StoreCartDrawer';
 import { removeFavorite, saveFavorite } from '../lib/favorites';
 
@@ -30,12 +31,13 @@ export default function Store({ lang }) {
   const location = useLocation();
   const [cartUserId, setCartUserId] = useState(null);
   const cart = useBalqeesCart(cartUserId);
-  const { settings: systemSettings } = useSystemSettings();
+  const { settings: systemSettings, loading: settingsLoading, error: settingsError } = useSystemSettings();
   const settings = systemSettings.store;
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [rules, setRules] = useState([]);
   const [session, setSession] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
@@ -57,21 +59,30 @@ export default function Store({ lang }) {
     } else setOccasionContext(null);
   }, [location.search]);
 
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      const [p,c,r,a] = await Promise.all([
-        supabase.from('products').select('*').eq('visibility','public').eq('is_active',true).order('created_at',{ascending:false}),
-        supabase.from('product_categories').select('*').eq('is_active',true).order('sort_order'),
-        supabase.from('price_rules').select('*').eq('is_active',true),
+  const loadCatalog = useCallback(async () => {
+    if (!supabase) { setLoadError(ar ? 'تعذر الاتصال بالمتجر.' : 'Store connection is unavailable.'); setLoading(false); return; }
+    setLoadError('');
+    try {
+      const [p, c, r, a] = await Promise.all([
+        supabase.from('products').select('*').eq('visibility', 'public').eq('is_active', true).order('created_at', { ascending: false }),
+        supabase.from('product_categories').select('*').eq('is_active', true).order('sort_order'),
+        supabase.from('price_rules').select('*').eq('is_active', true),
         supabase.auth.getSession(),
       ]);
-      if (!live) return;
-      setProducts(p.data || []); setCategories(c.data || []); setRules(r.data || []); setSession(a.data?.session || null); setLoading(false);
-    })();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e,next) => live && setSession(next));
-    return () => { live = false; subscription.unsubscribe(); };
-  }, []);
+      if (p.error || c.error || r.error) throw p.error || c.error || r.error;
+      setProducts(p.data || []); setCategories(c.data || []); setRules(r.data || []); setSession(a.data?.session || null);
+    } catch { setLoadError(ar ? 'تعذر تحديث المنتجات والأسعار. أعد المحاولة.' : 'Could not refresh products and pricing. Please retry.'); }
+    finally { setLoading(false); }
+  }, [ar]);
+  useEffect(() => {
+    loadCatalog();
+    if (!supabase) return undefined;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    return () => subscription.unsubscribe();
+  }, [loadCatalog]);
+  useLiveDataRefresh(loadCatalog, ['products', 'product_categories', 'price_rules']);
+  useEffect(() => { if (!settingsLoading && settings.enabled) loadCatalog(); }, [settingsLoading, settings.enabled, settings.guestBrowse, loadCatalog]);
+
 
 
   useEffect(() => {
@@ -124,6 +135,7 @@ export default function Store({ lang }) {
   const canBrowse = settings.guestBrowse !== false || !!session;
   const showPrices = settings.showPrices !== false;
   function addProduct(product) {
+    if (loadError || settingsError || !settings.enabled) return;
     if (!session && !canGuestCart) {
       navigate('/account?next=/store');
       return;
@@ -140,7 +152,8 @@ export default function Store({ lang }) {
 
     {occasionContext?.type && <section className="store-occasion-context shell"><div><Sparkles size={17}/><span>{ar ? 'تصفح بسياق المناسبة' : 'BROWSING FOR AN OCCASION'}</span><strong>{ar ? OCCASION_CONTEXT[occasionContext.type][0] : OCCASION_CONTEXT[occasionContext.type][1]}</strong><small>{occasionBudgetLabel(occasionContext.budget, ar)} · {ar ? 'نرتب الأنسب أولًا ولا نخفي بقية المتجر.' : 'We prioritize relevant options without hiding the rest of the store.'}</small></div><button type="button" onClick={()=>{setOccasionContext(null); navigate('/store',{replace:true});}}><X size={14}/>{ar ? 'إلغاء التخصيص' : 'Clear context'}</button></section>}
 
-    {!settings.enabled ? <section className="store-closed shell"><PackageOpen size={34}/><h2>{ar?'المتجر متوقف مؤقتًا':'Store is temporarily unavailable'}</h2><p>{ar?'أوقفت الإدارة المتجر مؤقتًا. ما زالت خدمات بلقيس متاحة من صفحة الخدمات والتواصل.':'The store is temporarily disabled by administration. Balqees services remain available through Services and Support.'}</p></section> : !canBrowse ? <section className="store-closed shell"><LockKeyhole size={34}/><h2>{ar?'المتجر مخصص للحسابات المسجلة':'Store access requires an account'}</h2><p>{ar?'سجّل الدخول لعرض المنتجات والأسعار وإرسال الطلبات.':'Sign in to browse products, pricing and submit orders.'}</p><button className="btn primary" onClick={()=>navigate('/account?next=/store')}>{ar?'تسجيل الدخول':'Sign in'}</button></section> : <>
+    {loadError && <div className="store-loading shell" role="alert"><p>{loadError}</p><button className="btn primary" onClick={loadCatalog}>{ar ? 'إعادة المحاولة' : 'Retry'}</button></div>}
+    {settingsError ? <section className="store-closed shell" role="alert"><h2>{ar ? 'تعذر التحقق من إعدادات المتجر' : 'Store settings are unavailable'}</h2><button className="btn primary" onClick={() => window.location.reload()}>{ar ? 'إعادة المحاولة' : 'Retry'}</button></section> : settingsLoading ? <div className="store-loading shell"><LoaderCircle className="spin"/></div> : !settings.enabled ? <section className="store-closed shell"><PackageOpen size={34}/><h2>{ar?'المتجر متوقف مؤقتًا':'Store is temporarily unavailable'}</h2><p>{ar?'أوقفت الإدارة المتجر مؤقتًا. ما زالت خدمات بلقيس متاحة من صفحة الخدمات والتواصل.':'The store is temporarily disabled by administration. Balqees services remain available through Services and Support.'}</p></section> : !canBrowse ? <section className="store-closed shell"><LockKeyhole size={34}/><h2>{ar?'المتجر مخصص للحسابات المسجلة':'Store access requires an account'}</h2><p>{ar?'سجّل الدخول لعرض المنتجات والأسعار وإرسال الطلبات.':'Sign in to browse products, pricing and submit orders.'}</p><button className="btn primary" onClick={()=>navigate('/account?next=/store')}>{ar?'تسجيل الدخول':'Sign in'}</button></section> : <>
       <section className="store-controls shell">
         <div className="store-search"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={ar?'ابحث باسم المنتج أو الوصف…':'Search products…'}/>{query&&<button onClick={()=>setQuery('')}><X size={15}/></button>}</div>
         <div className="store-filter"><Filter size={16}/><select value={category} onChange={e=>setCategory(e.target.value)}><option value="all">{ar?'كل الأصناف':'All categories'}</option>{categories.map(c=><option key={c.id} value={c.id}>{ar?c.name_ar:(c.name_en||c.name_ar)}</option>)}</select></div>
@@ -148,7 +161,7 @@ export default function Store({ lang }) {
       </section>
       {loading ? <div className="store-loading shell"><LoaderCircle className="spin" size={28}/><span>{ar?'جاري تجهيز المتجر…':'Loading store…'}</span></div> : <section className="store-grid shell">
         {visible.map(product => <ProductCard key={product.id} product={product} rules={rules} lang={lang} showPrices={showPrices} onAdd={()=>addProduct(product)} guestLocked={!session&&!canGuestCart} favoriteEnabled={!session || !!cartUserId} isFavorite={favoriteIds.has(String(product.id))} onFavorite={()=>toggleFavorite(product)} detailSearch={occasionContext?.type ? location.search : ''}/>) }
-        {!visible.length&&<div className="store-empty"><PackageOpen size={30}/><strong>{ar?'لا توجد منتجات مطابقة':'No matching products'}</strong><p>{ar?'جرّب صنفًا مختلفًا أو غيّر كلمة البحث.':'Try another category or search term.'}</p></div>}
+        {!loadError&&!visible.length&&<div className="store-empty"><PackageOpen size={30}/><strong>{ar?'لا توجد منتجات مطابقة':'No matching products'}</strong><p>{ar?'جرّب صنفًا مختلفًا أو غيّر كلمة البحث.':'Try another category or search term.'}</p></div>}
       </section>}
     </>}
 

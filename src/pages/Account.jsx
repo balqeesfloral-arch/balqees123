@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { safeQuoteReturn } from '../lib/quoteRequests';
 import {
   ArrowLeft,
   ArrowRight,
@@ -157,6 +158,7 @@ export default function Account({ lang, setLang }) {
   useEffect(() => {
     if (!supabase) { setMfaChecking(false); return undefined; }
     let mounted = true;
+    let authTimer;
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
@@ -176,9 +178,12 @@ export default function Account({ lang, setLang }) {
         return;
       }
       setMfaChecking(true);
-      Promise.resolve(assessMfa(nextSession)).finally(() => { if (mounted) setMfaChecking(false); });
+      window.clearTimeout(authTimer);
+      authTimer = window.setTimeout(() => {
+        Promise.resolve(assessMfa(nextSession)).finally(() => { if (mounted) setMfaChecking(false); });
+      }, 0);
     });
-    return () => { mounted = false; subscription.unsubscribe(); };
+    return () => { mounted = false; window.clearTimeout(authTimer); subscription.unsubscribe(); };
   }, [ar]);
 
   useEffect(() => {
@@ -246,7 +251,7 @@ export default function Account({ lang, setLang }) {
     }
     if (!error && data?.user?.app_metadata?.role === 'admin') {
       setLoading(false);
-      navigate('/admin', { replace: true });
+      if(!safeQuoteReturn(new URLSearchParams(location.search).get('next'))) navigate('/admin', { replace: true });
       return;
     }
     if (!error && data?.user?.id) {
@@ -268,7 +273,7 @@ export default function Account({ lang, setLang }) {
       }
       if (profileResult.data?.account_type === 'company') {
         setLoading(false);
-        navigate('/portal', { replace: true });
+        if(!safeQuoteReturn(new URLSearchParams(location.search).get('next'))) navigate('/portal', { replace: true });
         return;
       }
     }
@@ -369,6 +374,8 @@ export default function Account({ lang, setLang }) {
     if (!session || mfaChecking || mfaRequired || mfaCheckError || accountContextLoading || accountContextError) return;
     if (accountAccessStatus !== 'active') return;
     const next = new URLSearchParams(location.search).get('next');
+    const quoteReturn=safeQuoteReturn(next);
+    if(quoteReturn) return navigate(quoteReturn,{replace:true});
     if (next === '/admin' && session.user?.app_metadata?.role === 'admin') return navigate('/admin', { replace: true });
     if (next === '/portal' && accountType === 'company') return navigate('/portal', { replace: true });
     if (next === '/checkout' && accountType === 'individual') return navigate('/checkout', { replace: true });

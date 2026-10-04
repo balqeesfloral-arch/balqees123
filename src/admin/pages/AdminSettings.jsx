@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { SYSTEM_SETTING_DEFAULTS, useSystemSettings } from '../../lib/systemSettings';
 import { logAdminAction } from '../adminUtils';
+import { useLocation } from 'react-router-dom';
 
 const TAB_KEYS = {
   general: ['site_ui'],
@@ -36,12 +37,17 @@ const clone = value => JSON.parse(JSON.stringify(value));
 
 export default function AdminSettings({ lang }) {
   const ar = lang === 'ar';
+  const location = useLocation();
   const { settings, refreshSettings, saveSetting, lastSyncedAt } = useSystemSettings();
   const [tab, setTab] = useState('general');
   const [drafts, setDrafts] = useState(() => clone(settings));
   const [dirty, setDirty] = useState({});
   const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState(null);
+  useEffect(() => {
+    const requested = new URLSearchParams(location.search).get('tab');
+    if (TAB_KEYS[requested]) setTab(requested);
+  }, [location.search]);
 
   useEffect(() => {
     if (!Object.keys(dirty).length) setDrafts(clone(settings));
@@ -115,7 +121,7 @@ export default function AdminSettings({ lang }) {
       setDrafts(clone(next));
       setDirty({});
       setFlash({ type: 'success', text: ar ? 'تمت مزامنة الإعدادات من Supabase.' : 'Settings synced from Supabase.' });
-    }
+    } else setFlash({ type: 'error', text: ar ? 'تعذرت المزامنة. بقيت تعديلاتك محفوظة في الشاشة.' : 'Sync failed. Your unsaved changes are still in this screen.' });
     setSaving(false);
   }
 

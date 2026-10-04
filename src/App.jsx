@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -12,11 +12,13 @@ import Signup from './pages/Signup';
 import Certification from './pages/Certification';
 import IndividualCheckout from './individual/IndividualCheckout';
 import CodConfirmation from './individual/CodConfirmation';
-import AdminGate from './admin/AdminGate';
-import ClientPortalGate from './client/ClientPortalGate';
 import OrganizationInviteAccept from './client/OrganizationInviteAccept';
 import { useSystemSettings } from './lib/systemSettings';
 import { useCustomerPreferenceBridge } from './lib/customerPreferences';
+
+const AdminGate = lazy(() => import('./admin/AdminGate'));
+const ClientPortalGate = lazy(() => import('./client/ClientPortalGate'));
+const RequestQuote = lazy(() => import('./pages/RequestQuote'));
 
 function ScrollTop() {
   const { pathname } = useLocation();
@@ -40,16 +42,17 @@ export default function App(){
   useEffect(()=>{ localStorage.setItem('balqees-lang',lang); document.documentElement.lang=lang; document.documentElement.dir=lang==='ar'?'rtl':'ltr'; },[lang]);
 
   if (location.pathname.startsWith('/admin')) {
-    return <><ScrollTop/><Routes><Route path="/admin/*" element={<AdminGate lang={lang} setLang={setLang}/>}/></Routes></>;
+    return <><ScrollTop/><Suspense fallback={<div className="admin-gate-screen">{lang === 'ar' ? 'جاري فتح مساحة العمل…' : 'Opening workspace…'}</div>}><Routes><Route path="/admin/*" element={<AdminGate lang={lang} setLang={setLang}/>}/></Routes></Suspense></>;
   }
 
   if (location.pathname.startsWith('/portal')) {
-    return <><ScrollTop/><Routes><Route path="/portal/*" element={<ClientPortalGate lang={lang} setLang={setLang}/>}/></Routes></>;
+    return <><ScrollTop/><Suspense fallback={<div className="admin-gate-screen">{lang === 'ar' ? 'جاري فتح مساحة العمل…' : 'Opening workspace…'}</div>}><Routes><Route path="/portal/*" element={<ClientPortalGate lang={lang} setLang={setLang}/>}/></Routes></Suspense></>;
   }
 
   return <Layout lang={lang} setLang={setLang} customerPreferences={customerPreferences}><ScrollTop/><Routes>
     <Route path="/" element={<Home lang={lang}/>}/>
     <Route path="/services" element={<Services lang={lang}/>}/>
+    <Route path="/request-quote" element={<Suspense fallback={<div className="shell">{lang==='ar'?'تحميل الطلب…':'Loading request…'}</div>}><RequestQuote lang={lang} key={location.search}/></Suspense>}/>
     <Route path="/store" element={<Store lang={lang}/>}/>
     <Route path="/store/:slug" element={<ProductDetails lang={lang}/>}/>
     <Route path="/projects" element={<Projects lang={lang}/>}/>

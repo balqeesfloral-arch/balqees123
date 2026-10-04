@@ -1,4 +1,6 @@
-import { whatsappHref } from '../lib/season-design';
+import { Link } from 'react-router-dom';
+import { quoteRequestPath } from '../lib/quoteRequests';
+import './requestQuote.css';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
@@ -134,7 +136,7 @@ const copy = {
     heroTitleA: 'خدمات نباتية وزهرية',
     heroTitleB: 'تُصمَّم للمكان.',
     heroBody: 'من تنسيق الورد والباقات إلى النباتات الداخلية، الفازات، التشجير، الحدائق والصيانة؛ نبني حلاً متكاملاً يناسب الفنادق والضيافة والمساحات الراقية.',
-    heroPrimary: 'استعرض الخدمات', heroSecondary: 'اطلب معاينة',
+    heroPrimary: 'استعرض الخدمات', heroSecondary: 'اطلب عرض سعر',
     heroNote: 'أعمال حقيقية · حلول مخصصة · بدون أسعار ثابتة',
     servicesEyebrow: 'من الفكرة إلى العناية', servicesTitle: 'ثمانية مجالات. تجربة واحدة متكاملة.',
     servicesBody: 'نربط التوريد والاختيار والتنسيق والتنفيذ والعناية في منظومة واضحة، بدل أن تبقى كل خدمة منفصلة عن الأخرى.',
@@ -147,7 +149,7 @@ const copy = {
     plantsBody: 'ألوان، أوراق، ارتفاعات وملامس مختلفة تسمح لنا ببناء تكوين نباتي يناسب شخصية كل موقع وظروفه.',
     packagesEyebrow: 'SERVICE PACKAGES', packagesTitle: 'باقات منظمة… وليست قوالب جامدة.',
     packagesBody: 'هذه الباقات نقطة بداية لتوضيح نطاق الخدمة. العرض النهائي يتشكل بعد فهم الموقع والاحتياج، لذلك لا نضع أسعارًا ثابتة.',
-    packageBtn: 'اطلب تصور الباقة',
+    packageBtn: 'اطلب عرض سعر الباقة',
     processEyebrow: 'BALQEES METHOD', processTitle: 'من أول صورة للموقع… إلى مشهد يعيش.',
     steps: [
       ['01', 'معاينة وفهم الموقع', 'المساحة، الإضاءة، حركة الزوار، الهوية والاحتياج التشغيلي.'],
@@ -156,7 +158,7 @@ const copy = {
       ['04', 'متابعة وتجديد وعناية', 'برنامج مرن للحفاظ على جودة المشهد بعد التنفيذ.']
     ],
     ctaEyebrow: 'ابدأ بالمكان', ctaTitle: 'أرسل صورة المساحة أو مخططها… ونبني لك اتجاهًا يناسبها.',
-    ctaBody: 'يمكنك البدء بصورة واحدة للموقع. نرتب معك نوع الخدمة، نطاق العمل، المعاينة والخطوة التالية.', ctaBtn: 'تواصل عبر واتساب',
+    ctaBody: 'يمكنك البدء بصورة واحدة للموقع. نرتب معك نوع الخدمة، نطاق العمل، المعاينة والخطوة التالية.', ctaBtn: 'إرسال طلب عرض سعر',
     realWork: 'صور حقيقية من أعمال وتوريدات بلقيس'
   },
   en: {
@@ -164,7 +166,7 @@ const copy = {
     heroTitleA: 'Botanical & floral services',
     heroTitleB: 'designed around the space.',
     heroBody: 'From floral styling and bouquets to indoor planting, vases, landscaping, trees and ongoing care — one integrated service for hotels, hospitality and premium spaces.',
-    heroPrimary: 'Explore services', heroSecondary: 'Request a site visit',
+    heroPrimary: 'Explore services', heroSecondary: 'Request a quotation',
     heroNote: 'Real work · Tailored solutions · No fixed pricing',
     servicesEyebrow: 'From concept to care', servicesTitle: 'Eight disciplines. One coherent experience.',
     servicesBody: 'We connect supply, curation, styling, execution and care into one clear system rather than treating each task in isolation.',
@@ -186,7 +188,7 @@ const copy = {
       ['04', 'Maintain & refresh', 'A flexible care program that protects the scene after installation.']
     ],
     ctaEyebrow: 'START WITH THE SPACE', ctaTitle: 'Send us a photo or plan of the space — we will build a direction around it.',
-    ctaBody: 'One photo is enough to begin. We can then define service type, scope, site visit and the next step.', ctaBtn: 'Contact on WhatsApp',
+    ctaBody: 'One photo is enough to begin. We can then define service type, scope, site visit and the next step.', ctaBtn: 'Request a quotation',
     realWork: 'Real imagery from Balqees work and supply'
   }
 };
@@ -214,11 +216,6 @@ export default function Services({ lang }) {
   const [activeService, setActiveService] = useState('hospitality');
   const currentService = serviceItems.find((item) => item.key === activeService) || serviceItems[0];
 
-  const whatsapp = (messageAr, messageEn) => whatsappHref(ar ? messageAr : messageEn);
-  const generalWhatsApp = whatsapp(
-    'السلام عليكم، أرغب في طلب معاينة أو عرض مخصص لخدمات بلقيس.',
-    'Hello, I would like to request a site visit or tailored proposal from Balqees Floral.'
-  );
 
   return (
     <div className="services-luxury">
@@ -229,7 +226,7 @@ export default function Services({ lang }) {
           <p>{t.heroBody}</p>
           <div className="services-hero-actions">
             <a className="btn services-btn-primary" href="#service-universe">{t.heroPrimary}<ArrowUpRight size={18}/></a>
-            <a className="btn services-btn-secondary" href={generalWhatsApp} target="_blank" rel="noreferrer">{t.heroSecondary}</a>
+            <Link className="btn services-btn-secondary" to={quoteRequestPath({service:"custom"})}>{t.heroSecondary}</Link>
           </div>
           <div className="services-hero-note"><ShieldCheck size={16}/><span>{t.heroNote}</span></div>
         </div>
@@ -252,6 +249,17 @@ export default function Services({ lang }) {
             </button>;
           })}
         </nav>
+      </section>
+
+      <section className="services-contracts shell">
+        <span className="services-kicker">{ar?'عقود بلقيس والعناية الدورية':'BALQEES CONTRACTS & ONGOING CARE'}</span>
+        <h2>{ar?'ورد يتجدد، وعناية تستمر.':'Fresh flowers. Continuing care.'}</h2>
+        <p>{ar?'اختر البرنامج المناسب وارسل تفاصيل الموقع للحصول على عرض سعر مخصص من الإدارة.':'Choose your program and share the site details for a tailored quotation from administration.'}</p>
+        <div className="services-contract-grid">{[
+          ['weekly_flowers',Flower2,'عقد الورد الأسبوعي','Weekly flower contract','توريد وتجديد الورد أسبوعيًا حسب الكميات وطبيعة الموقع.','Weekly supply and refresh tailored to quantities and the property.'],
+          ['monthly_flowers',RefreshCcw,'عقد الورد الشهري','Monthly flower contract','برنامج شهري لتنسيق الورد والتوريد وفق جدول يتناسب مع احتياجك.','A monthly floral styling and supply program scheduled around your needs.'],
+          ['maintenance',Leaf,'عقود الصيانة والعناية','Maintenance & care contracts','ري وتقليم وتغذية ومتابعة للنباتات والحدائق وفق نطاق متفق عليه.','Watering, pruning, nutrition and plant or garden care under an agreed scope.']
+        ].map(([id,Icon,a,en,descA,descE])=><Link key={id} to={quoteRequestPath({service:id})}><Icon size={26}/><h3>{ar?a:en}</h3><p>{ar?descA:descE}</p><span>{ar?'طلب عرض سعر':'Request a quotation'}<ArrowUpRight size={17}/></span></Link>)}</div>
       </section>
 
       <section id="service-universe" className="services-universe shell">
@@ -279,9 +287,9 @@ export default function Services({ lang }) {
                   <div className="service-card-copy">
                     <h3>{ar ? item.ar : item.en}</h3>
                     <p>{ar ? item.arBody : item.enBody}</p>
-                    <a href={whatsapp(`السلام عليكم، أرغب في الاستفسار عن خدمة: ${item.ar}`, `Hello, I would like to ask about: ${item.en}`)} target="_blank" rel="noreferrer">
-                      {ar ? 'ناقش هذه الخدمة' : 'Discuss this service'}<ArrowUpRight size={16}/>
-                    </a>
+                    <Link to={quoteRequestPath({service:item.key})}>
+                      {ar ? 'طلب عرض سعر' : 'Request a quotation'}<ArrowUpRight size={16}/>
+                    </Link>
                   </div>
                 </article>
               </Reveal>
@@ -314,9 +322,9 @@ export default function Services({ lang }) {
             <h2>{t.hospitalityTitle}</h2>
             <p>{t.hospitalityBody}</p>
             <div className="services-hospitality-pills">{t.hospitalityPoints.map((item) => <span key={item}><Check size={14}/>{item}</span>)}</div>
-            <a href={whatsapp('السلام عليكم، أرغب في مناقشة حلول بلقيس للفنادق والضيافة.', 'Hello, I would like to discuss Balqees hospitality solutions.')} className="services-inline-link" target="_blank" rel="noreferrer">
-              {ar ? 'اطلب تصورًا للفندق' : 'Request a hotel concept'}<ArrowUpRight size={17}/>
-            </a>
+            <Link to={quoteRequestPath({service:'hospitality'})} className="services-inline-link">
+              {ar ? 'طلب عرض سعر للضيافة' : 'Request a hospitality quotation'}<ArrowUpRight size={17}/>
+            </Link>
           </div>
           <div className="services-hospitality-collage">
             <figure className="hospitality-main"><img src="/assets/services/hospitality-signature.webp" alt="" loading="lazy" decoding="async"/><figcaption>{ar ? 'تنسيق لوبي' : 'Lobby styling'}</figcaption></figure>
@@ -379,7 +387,7 @@ export default function Services({ lang }) {
                   <h3>{ar ? pack.ar : pack.en}</h3>
                   <p>{ar ? pack.arSub : pack.enSub}</p>
                   <ul>{items.map((item) => <li key={item}><Check size={15}/><span>{item}</span></li>)}</ul>
-                  <a href={whatsapp(`السلام عليكم، أرغب في طلب تصور لـ ${pack.ar}.`, `Hello, I would like a proposal for the ${pack.en} package.`)} target="_blank" rel="noreferrer">{t.packageBtn}<ArrowUpRight size={16}/></a>
+                  <Link to={quoteRequestPath({service:pack.key==='signature'?'floral':pack.key})}>{t.packageBtn}<ArrowUpRight size={16}/></Link>
                 </article>
               </Reveal>
             );
@@ -408,7 +416,7 @@ export default function Services({ lang }) {
             <span className="services-kicker">{t.ctaEyebrow}</span>
             <h2>{t.ctaTitle}</h2>
             <p>{t.ctaBody}</p>
-            <a className="btn services-btn-primary" href={generalWhatsApp} target="_blank" rel="noreferrer">{t.ctaBtn}<ArrowUpRight size={18}/></a>
+            <Link className="btn services-btn-primary" to={quoteRequestPath({service:"custom"})}>{t.ctaBtn}<ArrowUpRight size={18}/></Link>
           </div>
           <div className="services-cta-orbit" aria-hidden="true"><i/><i/><i/></div>
         </Reveal>

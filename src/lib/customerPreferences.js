@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 
 export const CUSTOMER_PREFERENCE_DEFAULTS = Object.freeze({
@@ -133,7 +133,9 @@ export function useCustomerPreferenceBridge(setLang) {
   const [isIndividual, setIsIndividual] = useState(false);
   const [preferences, setPreferences] = useState(null);
 
+  const hydrationId = useRef(0);
   const hydrate = useCallback(async nextSession => {
+    const id = ++hydrationId.current;
     const uid = nextSession?.user?.id;
     if (!uid || !supabase) {
       setIsIndividual(false);
@@ -142,6 +144,7 @@ export function useCustomerPreferenceBridge(setLang) {
       return;
     }
     const { data: profile } = await supabase.from('customer_profiles').select('account_type').eq('id', uid).maybeSingle();
+    if (id !== hydrationId.current) return;
     if (profile?.account_type !== 'individual') {
       setIsIndividual(false);
       setPreferences(null);
@@ -155,6 +158,7 @@ export function useCustomerPreferenceBridge(setLang) {
       applyCustomerPreferences(cached, true);
     }
     const next = await loadCustomerPreferences(uid);
+    if (id !== hydrationId.current) return;
     setIsIndividual(true);
     setPreferences(next);
     applyCustomerPreferences(next, true);
@@ -164,6 +168,7 @@ export function useCustomerPreferenceBridge(setLang) {
   useEffect(() => {
     if (!supabase) return undefined;
     let active = true;
+    let authTimer;
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSession(data.session || null);
@@ -172,7 +177,8 @@ export function useCustomerPreferenceBridge(setLang) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, next) => {
       if (!active) return;
       setSession(next || null);
-      hydrate(next || null);
+      window.clearTimeout(authTimer);
+      authTimer = window.setTimeout(() => hydrate(next || null), 0);
     });
     const onChange = event => {
       const uid = session?.user?.id;
@@ -185,6 +191,8 @@ export function useCustomerPreferenceBridge(setLang) {
     window.addEventListener(CHANGE_EVENT, onChange);
     return () => {
       active = false;
+      ++hydrationId.current;
+      window.clearTimeout(authTimer);
       subscription.unsubscribe();
       window.removeEventListener(CHANGE_EVENT, onChange);
     };

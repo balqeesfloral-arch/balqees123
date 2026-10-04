@@ -7,6 +7,7 @@ import {
   UserRound, WandSparkles, X, ZoomIn,
 } from 'lucide-react';
 import BrandMark from '../components/BrandMark';
+import { useSystemSettings } from '../lib/systemSettings';
 import { supabase } from '../lib/supabase';
 import { useBalqeesCart } from '../lib/cart';
 import { removeFavorite, saveFavorite } from '../lib/favorites';
@@ -110,6 +111,7 @@ function DetailAccordion({ title, children, open, onToggle }) {
 }
 
 export default function IndividualProductDetails({ lang, session }) {
+  const { settings: systemSettings, error: settingsError } = useSystemSettings();
   const ar = lang === 'ar';
   const Back = ar ? ArrowRight : ArrowLeft;
   const navigate = useNavigate();
@@ -290,25 +292,8 @@ export default function IndividualProductDetails({ lang, session }) {
       else { await navigator.clipboard.writeText(url); setToast(ar ? 'تم نسخ رابط المنتج' : 'Product link copied'); }
     } catch { /* cancelled */ }
   }
-  async function requestPrice() {
-    if (!product) return;
-    setAssistantBusy(true);
-    const { data, error: rpcError } = await supabase.rpc('customer_open_support_case', {
-      p_order_id: null,
-      p_category: 'product_pricing',
-      p_subject: ar ? `طلب تسعير — ${product.name_ar}` : `Pricing request — ${product.name_en || product.name_ar}`,
-      p_automation_attempts: [{ type: 'product_context', product_id: product.id, result: 'requires_human_pricing' }],
-      p_context_snapshot: { product_id: product.id, sku: product.sku || null, product_name: product.name_ar, source: 'product_details' },
-    });
-    setAssistantBusy(false);
-    if (rpcError || !data?.id) { setToast(ar ? 'تعذر فتح طلب التسعير الآن' : 'Could not open pricing request'); return; }
-    await supabase.from('support_messages').insert({
-      conversation_id: data.id,
-      sender_id: uid,
-      sender_role: 'user',
-      body: ar ? `أرغب في طلب تسعير للمنتج: ${product.name_ar}${product.sku ? ` — ${product.sku}` : ''}.` : `I would like pricing for: ${product.name_en || product.name_ar}${product.sku ? ` — ${product.sku}` : ''}.`,
-    });
-    navigate(`/account/support?conversation=${encodeURIComponent(data.id)}`);
+  function requestPrice() {
+    if(product) navigate(`/request-quote?product=${encodeURIComponent(product.id)}&quantity=${encodeURIComponent(qty)}`);
   }
   async function sendProductQuestion() {
     const body = assistantQuestion.trim();
@@ -329,6 +314,7 @@ export default function IndividualProductDetails({ lang, session }) {
   }
   function openProduct(row) { navigate(`/store/${row.slug || row.id}${location.search || ''}`); }
 
+  if (settingsError || !systemSettings.store.enabled) return <ProductChrome lang={lang} session={session} cart={cart}><main className="individual-main"><div className="individual-shell"><div className="product-detail-empty" role={settingsError ? 'alert' : 'status'}><PackageOpen/><h1>{settingsError ? (ar ? 'تعذر التحقق من إعدادات المتجر' : 'Store settings are unavailable') : (ar ? 'المتجر متوقف مؤقتًا' : 'Store is temporarily closed')}</h1><Link to={storeBack}>{ar ? 'العودة للمتجر' : 'Back to store'}</Link></div></div></main></ProductChrome>;
   if (loading) return <ProductChrome lang={lang} session={session} cart={cart}><main className="individual-main"><div className="individual-shell"><div className="product-detail-loading"><LoaderCircle className="spin"/><strong>{ar ? 'نجهّز تفاصيل المنتج…' : 'Preparing product details…'}</strong></div></div></main></ProductChrome>;
   if (error) return <ProductChrome lang={lang} session={session} cart={cart}><main className="individual-main"><div className="individual-shell"><div className="product-detail-empty"><PackageOpen/><h1>{error}</h1><Link to={storeBack}>{ar ? 'العودة للمتجر' : 'Back to store'}</Link></div></div></main></ProductChrome>;
   if (!product) return <ProductChrome lang={lang} session={session} cart={cart}><main className="individual-main"><div className="individual-shell"><div className="product-detail-empty"><PackageOpen/><h1>{ar ? 'المنتج غير متاح' : 'Product unavailable'}</h1><p>{ar ? 'قد يكون المنتج متوقفًا أو غير منشور حاليًا.' : 'The product may be inactive or unpublished.'}</p><Link to={storeBack}>{ar ? 'العودة للمتجر' : 'Back to store'}</Link></div></div></main></ProductChrome>;
