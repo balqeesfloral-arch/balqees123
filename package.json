@@ -1,7 +1,7 @@
 {
-  "name": "balqees-floral-site",
+  "name": "balqees-floral",
   "private": true,
-  "version": "10.45.7",
+  "version": "10.46.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

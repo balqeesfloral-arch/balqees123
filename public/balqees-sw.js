@@ -8,7 +8,7 @@ self.addEventListener('push',event=>{
   const title=payload.title||payload.title_ar||'بلقيس الورد';
   const options={
     body:payload.body||payload.body_ar||'',
-    icon:'/favicon.svg',badge:'/favicon.svg',
+    icon:'/icons/icon-192.png',badge:'/icons/badge-96.png',
     tag:payload.group_key||payload.tag||payload.notification_id||'balqees-notification',
     renotify:Boolean(payload.renotify),
     data:{url:payload.deep_link||payload.action_url||'/portal/notifications',notification_id:payload.notification_id||null},
