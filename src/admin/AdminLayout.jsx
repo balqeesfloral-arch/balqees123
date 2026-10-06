@@ -43,6 +43,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminOrders from './pages/AdminOrders';
 import AdminServiceRequests from './pages/AdminServiceRequests';
 import AdminQuoteRequests from './pages/AdminQuoteRequests';
+import AdminAccounting from './pages/AdminAccounting';
 import AdminQuotes from './pages/AdminQuotes';
 import AdminContracts from './pages/AdminContracts';
 import AdminSites from './pages/AdminSites';
@@ -208,6 +209,7 @@ export default function AdminLayout({ lang, setLang, session }) {
           <Route path="quotes" element={<AdminQuotes lang={lang}/>}/>
           <Route path="contracts" element={<AdminContracts lang={lang}/>}/>
           <Route path="sites" element={<AdminSites lang={lang}/>}/>
+          <Route path="accounting" element={<AdminAccounting lang={lang}/>}/>
           <Route path="financial-docs" element={<AdminClientDocuments lang={lang}/>}/>
           <Route path="catalog" element={<AdminCatalog lang={lang}/>}/>
           <Route path="institutional-catalog" element={<AdminInstitutionalCatalog lang={lang}/>}/>

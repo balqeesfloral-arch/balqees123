@@ -25,7 +25,7 @@ const required=[
   'SUPABASE-v10.44-PRODUCTION-HARDENING.sql'
 ];
 for(const rel of required)if(!fs.existsSync(path.join(root,rel)))missing.push(`missing required file: ${rel}`);
-if(pkg.version!=='10.48.0')missing.push(`package version is ${pkg.version}, expected 10.48.0`);
+if(pkg.version!=='10.49.0')missing.push(`package version is ${pkg.version}, expected 10.49.0`);
 if(!html.includes('/favicon.ico'))missing.push('index.html does not declare /favicon.ico');
 if(missing.length){console.error('Source verification FAILED');for(const x of missing)console.error(`- ${x}`);process.exit(1)}
 console.log(`Source verification OK: ${checked} relative imports checked; ${files.length} source files scanned; version ${pkg.version}.`);

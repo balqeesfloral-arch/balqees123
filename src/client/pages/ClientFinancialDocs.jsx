@@ -1,3 +1,4 @@
+import AccountingPortal from '../../accounting/AccountingPortal';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -148,6 +149,8 @@ export default function ClientFinancialDocs(){
 
   return <div className="client-page document-center-page">
     <header className="client-page-head document-center-head"><div><span><FileArchive/>{ar?'مركز الثقة المالي والمستندي':'FINANCIAL & DOCUMENT CENTER'}</span><h2>{ar?'المركز المالي والمستندات':'Financial & Document Center'}</h2><p>{ar?'كل نسخة رسمية في سياقها: الطلب، العرض، العقد، الموقع وبيانات المشتريات — مع فصل صارم للصلاحيات المالية.':'Official documents in context: order, quotation, contract, site and procurement references — with strict finance permissions.'}</p></div><div><button className="client-secondary" onClick={exportCsv}><FileSpreadsheet/>{ar?'تصدير البيانات':'Export data'}</button><button className="client-secondary" onClick={load}><RefreshCw className={loading?'spin':''}/>{ar?'تحديث':'Refresh'}</button></div></header>
+
+    <AccountingPortal lang={lang} organizationId={organization?.id}/>
 
     <section className="document-trust-banner"><ShieldCheck/><div><strong>{ar?'المستند الرسمي يبقى كما صدر':'The official document stays original'}</strong><p>{ar?'بلقيس لا تعيد إنشاء الفاتورة داخل البوابة. النسخ المالية هنا مرفوعة بعد إصدارها من النظام المحاسبي، وأي استبدال يحفظ النسخة السابقة في السجل.':'Balqees does not regenerate invoices in the portal. Financial copies are uploaded after accounting issuance, and replacements preserve previous versions.'}</p></div></section>
 

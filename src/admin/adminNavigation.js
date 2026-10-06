@@ -19,6 +19,7 @@ export const ADMIN_NAV = [
   { path: '/admin/catalog', icon: Boxes, ar: 'المنتجات والتسعير', en: 'Products & pricing', group: 'commerce' },
   { path: '/admin/orders', icon: PackageSearch, ar: 'الطلبات', en: 'Orders', group: 'commerce' },
   { path: '/admin/quote-requests', icon: ClipboardPlus, ar: 'طلبات الخدمات والتسعير', en: 'Service & pricing requests', group: 'commerce' },
+  { path: '/admin/accounting', icon: ReceiptText, ar: 'المكتب المحاسبي', en: 'Accounting Office', group: 'commerce' },
   { path: '/admin/discounts', icon: BadgePercent, ar: 'الخصومات', en: 'Discounts', group: 'commerce' },
   { path: '/admin/offers', icon: Gift, ar: 'العروض', en: 'Offers', group: 'commerce' },
   { path: '/admin/service-requests', icon: ClipboardPlus, ar: 'طلبات المنشآت', en: 'B2B requests', group: 'organizations' },

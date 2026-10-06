@@ -1,3 +1,4 @@
+import AccountingPortal from '../accounting/AccountingPortal';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -269,6 +270,7 @@ export default function IndividualDocuments({ lang, session }) {
     </div></header>
 
     <main className="individual-shell individual-documents-main">
+      <AccountingPortal lang={lang} userId={session?.user?.id}/>
       <section className="individual-documents-hero">
         <div><small>{ar ? 'خزنة الطلبات' : 'ORDER DOCUMENT VAULT'}</small><h1>{ar ? 'مستنداتك' : 'Your documents'}</h1><p>{ar ? 'فواتيرك الرسمية وملخصات طلباتك في مكان واحد، بدون إعادة إنشاء أو تعديل أي فاتورة أصلية.' : 'Your official invoices and order summaries in one place, without recreating or altering any original invoice.'}</p></div>
         <div className={`individual-documents-live ${liveStatus}`}><Wifi size={15}/><span>{liveStatus === 'live' ? (ar ? 'تحديث مباشر' : 'Live updates') : liveStatus === 'offline' ? (ar ? 'التحديث المباشر غير متصل' : 'Live updates offline') : (ar ? 'جاري الاتصال' : 'Connecting')}</span></div>

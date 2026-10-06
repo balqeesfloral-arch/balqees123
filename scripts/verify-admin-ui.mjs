@@ -121,6 +121,7 @@ async function contextFor({ role = 'admin', claimedRole = role, blocked = false,
     const limited = url.searchParams.has('limit') ? rows.slice(0, Number(url.searchParams.get('limit'))) : rows;
     return response(request.headers().accept?.includes('object') ? limited[0] || null : limited, 200, { 'Content-Range': `${count ? '0-' + (count - 1) : '*'}/${count}` });
   });
+  await context.route('https://balqees-smart-office.vercel.app/api/portal', route => route.fulfill({status:503,headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'},body:JSON.stringify({ok:false,error:'ربط المكتب بالموقع لم يُفعّل بعد.'})}));
   await context.routeWebSocket(`${api.replace('https', 'wss')}/**`, socket => {
     socket.onMessage(message => {
       const [join, ref, topic, event] = JSON.parse(String(message));
