@@ -93,6 +93,12 @@ export default function Account({ lang, setLang }) {
 
   const strength = useMemo(() => passwordScore(password), [password]);
 
+  const authBaseUrl = useMemo(() => {
+    const configured = (import.meta.env.VITE_PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '');
+    return configured || window.location.origin;
+  }, []);
+  const recoveryRedirectUrl = useMemo(() => `${authBaseUrl}/account?recovery=1`, [authBaseUrl]);
+
   useLayoutEffect(() => {
     if (!location.state?.fromIndividualPortal) return undefined;
     document.body.classList.add('individual-account-active');
@@ -159,30 +165,46 @@ export default function Account({ lang, setLang }) {
     if (!supabase) { setMfaChecking(false); return undefined; }
     let mounted = true;
     let authTimer;
-    (async () => {
-      const { data } = await supabase.auth.getSession();
+    const recoveryRequested = new URLSearchParams(window.location.search).get('recovery') === '1';
+
+    const enterRecovery = nextSession => {
       if (!mounted) return;
-      setSession(data.session);
-      await assessMfa(data.session);
-      if (mounted) setMfaChecking(false);
-    })();
+      setSession(nextSession);
+      setMode('recovery');
+      setMfaRequired(false);
+      setMfaChecking(false);
+      setResetSent(false);
+      setMessage({ type: 'success', text: ar ? 'تم التحقق من رابط الاستعادة. اختر كلمة مرور جديدة لحسابك.' : 'Recovery link verified. Choose a new password for your account.' });
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!mounted) return;
       setSession(nextSession);
-      if (event === 'PASSWORD_RECOVERY') {
-        setMode('recovery');
-        setMfaRequired(false);
-        setMfaChecking(false);
-        setResetSent(false);
-        setMessage({ type: 'success', text: ar ? 'تم التحقق من رابط الاستعادة. اختر كلمة مرور جديدة لحسابك.' : 'Recovery link verified. Choose a new password for your account.' });
+
+      if (event === 'PASSWORD_RECOVERY' || (recoveryRequested && nextSession && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN'))) {
+        enterRecovery(nextSession);
         return;
       }
+
       setMfaChecking(true);
       window.clearTimeout(authTimer);
       authTimer = window.setTimeout(() => {
         Promise.resolve(assessMfa(nextSession)).finally(() => { if (mounted) setMfaChecking(false); });
       }, 0);
     });
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      if (recoveryRequested && data.session) {
+        enterRecovery(data.session);
+        return;
+      }
+      setSession(data.session);
+      await assessMfa(data.session);
+      if (mounted) setMfaChecking(false);
+    })();
+
     return () => { mounted = false; window.clearTimeout(authTimer); subscription.unsubscribe(); };
   }, [ar]);
 
@@ -287,7 +309,7 @@ export default function Account({ lang, setLang }) {
   async function resendVerification() {
     if (!supabase || !email.trim()) return;
     setLoading(true);
-    const { error } = await supabase.auth.resend({ type: 'signup', email: cleanEmail(email), options: { emailRedirectTo: `${window.location.origin}/account` } });
+    const { error } = await supabase.auth.resend({ type: 'signup', email: cleanEmail(email), options: { emailRedirectTo: `${authBaseUrl}/account` } });
     setLoading(false);
     setMessage(error ? { type: 'error', text: errorMessage(error, ar) } : { type: 'success', text: ar ? 'أعدنا إرسال رسالة التفعيل. تحقق من بريدك.' : 'Verification email sent again. Check your inbox.' });
   }
@@ -305,7 +327,7 @@ export default function Account({ lang, setLang }) {
     setLoading(true);
     setMessage(null);
     const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail(email), {
-      redirectTo: `${window.location.origin}/account`,
+      redirectTo: recoveryRedirectUrl,
     });
     setLoading(false);
 
@@ -339,11 +361,14 @@ export default function Account({ lang, setLang }) {
     setLoading(false);
     if (error) setMessage({ type: 'error', text: errorMessage(error, ar) });
     else {
-      setMessage({ type: 'success', text: ar ? 'تم تحديث كلمة المرور بنجاح. يمكنك الآن الدخول بكلمة المرور الجديدة.' : 'Password updated successfully. You can now sign in with the new password.' });
+      await supabase.auth.signOut({ scope: 'local' });
+      setSession(null);
+      setMessage({ type: 'success', text: ar ? 'تم تحديث كلمة المرور بنجاح. سجل الدخول الآن بكلمة المرور الجديدة.' : 'Password updated successfully. Sign in now with your new password.' });
       setMode('login');
       setPassword('');
       setConfirmPassword('');
       setShowPassword(false);
+      navigate('/account', { replace: true });
     }
   }
 
