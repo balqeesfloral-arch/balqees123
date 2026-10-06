@@ -97,7 +97,7 @@ export default function Account({ lang, setLang }) {
     const configured = (import.meta.env.VITE_PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '');
     return configured || window.location.origin;
   }, []);
-  const recoveryRedirectUrl = useMemo(() => `${authBaseUrl}/account?recovery=1`, [authBaseUrl]);
+  const recoveryRedirectUrl = useMemo(() => `${authBaseUrl}/account/reset-password?recovery=1`, [authBaseUrl]);
 
   useLayoutEffect(() => {
     if (!location.state?.fromIndividualPortal) return undefined;
