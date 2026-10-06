@@ -6,6 +6,7 @@ import { SystemSettingsProvider } from './lib/systemSettings';
 import './styles.css';
 import './season-interactions.css';
 import './responsive-polish.css';
+import './password-recovery.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
