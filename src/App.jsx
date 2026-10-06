@@ -8,6 +8,7 @@ import ProductDetails from './pages/ProductDetails';
 import Projects from './pages/Projects';
 import About from './pages/About';
 import Account from './pages/Account';
+import PasswordReset from './pages/PasswordReset';
 import Signup from './pages/Signup';
 import Certification from './pages/Certification';
 import IndividualCheckout from './individual/IndividualCheckout';
@@ -47,6 +48,10 @@ export default function App(){
 
   if (location.pathname.startsWith('/portal')) {
     return <><ScrollTop/><Suspense fallback={<div className="admin-gate-screen">{lang === 'ar' ? 'جاري فتح مساحة العمل…' : 'Opening workspace…'}</div>}><Routes><Route path="/portal/*" element={<ClientPortalGate lang={lang} setLang={setLang}/>}/></Routes></Suspense></>;
+  }
+
+  if (location.pathname === '/account/reset-password') {
+    return <><ScrollTop/><PasswordReset lang={lang} setLang={setLang}/></>;
   }
 
   return <Layout lang={lang} setLang={setLang} customerPreferences={customerPreferences}><ScrollTop/><Routes>
