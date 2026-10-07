@@ -111,6 +111,29 @@ test('valid website origin does not grant admin access without fresh verificatio
   const res=responseRecorder();await handler({method:'POST',headers:{origin:'https://balqees123.vercel.app','content-type':'application/json',authorization:'Bearer stale-token'},body:{action:'state'}},res);
   assert.equal(res.statusCode,403);assert.equal(executed,0);
 });
+test('both Balqees website domains support preflight and require an admin JWT, never Office cookies',async()=>{
+  for(const origin of ['https://balqees123.vercel.app','https://balqeesfloral.vercel.app']){
+    let authenticated=0,officeSessions=0;
+    const handler=createHandler({
+      makeStore:()=>({authenticate:async token=>{assert.equal(token,'admin-jwt');authenticated++;return 'site:admin';},select:async()=>[]}),
+      officeSession:()=>{officeSessions++;return {email:'office@example.test'};},
+      accounting:{clients:async()=>[]},env:{},
+    });
+    const preflight=responseRecorder();await handler({method:'OPTIONS',headers:{origin}},preflight);
+    assert.equal(preflight.statusCode,204);assert.equal(preflight.headers['Access-Control-Allow-Origin'],origin);
+    assert.equal(preflight.headers['Access-Control-Allow-Credentials'],undefined);
+    const headers={origin,'content-type':'application/json',cookie:'office-session=fixture'};
+    const denied=responseRecorder();await handler({method:'POST',headers,body:{action:'state'}},denied);
+    assert.equal(denied.statusCode,401);assert.equal(authenticated,0);assert.equal(officeSessions,0);
+    const allowed=responseRecorder();await handler({method:'POST',headers:{...headers,authorization:'Bearer admin-jwt'},body:{action:'state'}},allowed);
+    assert.equal(allowed.statusCode,200);assert.equal(authenticated,1);assert.equal(officeSessions,0);
+  }
+  const handler=createHandler({env:{}});
+  for(const origin of ['https://balqeesfloral.vercel.app.attacker.example','https://unrelated.vercel.app','http://balqeesfloral.vercel.app']){
+    const res=responseRecorder();await handler({method:'OPTIONS',headers:{origin}},res);
+    assert.equal(res.statusCode,403);assert.equal(res.headers['Access-Control-Allow-Origin'],undefined);
+  }
+});
 test('secret apikey stays on server; user JWT is forwarded only for admin verification',async()=>{
   const calls=[];const store=createPortalStore({BALQEES_PORTAL_URL:'https://test.supabase.co',BALQEES_PORTAL_SECRET_KEY:'sb_secret_test',BALQEES_PORTAL_PUBLISHABLE_KEY:'sb_publishable_test'},async(url,options)=>{
     calls.push({url,options});return new Response(JSON.stringify(url.includes('/rpc/')?{user_id:customerId}:[]),{status:200});

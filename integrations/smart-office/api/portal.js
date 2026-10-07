@@ -14,7 +14,7 @@ export function createHandler({makeStore = createPortalStore, officeSession = ve
   return async function handler(req,res) {
     res.setHeader('Cache-Control','no-store, max-age=0');
     res.setHeader('Vary','Origin');
-    const origins = new Set(['https://balqees123.vercel.app','https://balqees-smart-office.vercel.app',
+    const origins = new Set(['https://balqees123.vercel.app','https://balqeesfloral.vercel.app','https://balqees-smart-office.vercel.app',
       ...String(env.BALQEES_PORTAL_ORIGINS || '').split(',').map(s => s.trim()).filter(s => /^https:\/\/[^/]+$/.test(s)),
     ]);
     const origin = req.headers.origin;
