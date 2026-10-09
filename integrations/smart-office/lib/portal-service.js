@@ -1,6 +1,8 @@
 import { PortalError, uuid, statementFilters, publicStatement, validateAttachment, verifyTransfer } from './portal-domain.js';
+import { createOfficeLinkService } from './office-link-service.js';
 
 export function createPortalService({store, ledger}) {
+  const officeLink=createOfficeLinkService({store,ledger});
   const needLink = async id => {
     const link = await store.one('accounting_links',uuid(id));
     if (!link?.is_active) throw new PortalError('LINK_REQUIRED','اختر ربطًا نشطًا للعميل.',404);
@@ -52,7 +54,7 @@ export function createPortalService({store, ledger}) {
         store.select('accounting_statements',{select:'id,link_id,statement_number,created_at',order:'created_at.desc',limit:'100'}),
         store.select('accounting_documents',{select:'*',order:'created_at.desc',limit:'100'}),
       ]);
-      return {version:'10.49',clients,links,profiles,organizations,payments,statements,documents,limits:{payments:250,statements:100,documents:100,targets:1000}};
+      return {version:'10.50',clients,links,profiles,organizations,payments,statements,documents,limits:{payments:250,statements:100,documents:100,targets:1000}};
     }
     if (action === 'bind') {
       const clients = await ledger.clients();
@@ -90,7 +92,7 @@ export function createPortalService({store, ledger}) {
         return existing;
       }
       const title = String(input.title || '').trim();
-      if (!title || title.length > 200 || !['invoice','receipt','statement','credit_note','debit_note','other'].includes(input.type)) throw new PortalError('DOCUMENT_INVALID','أكمل عنوان المستند ونوعه.');
+      if (!title || title.length > 200 || !['invoice','receipt','statement','credit_note','debit_note','quotation','contract','other'].includes(input.type)) throw new PortalError('DOCUMENT_INVALID','أكمل عنوان المستند ونوعه.');
       const file = validateAttachment(input.file), path = `${link.id}/${id}.${file.ext}`;
       // Immutable objects. A lost upload response can be retried only if the
       // existing object has exactly the same bytes (checked by upload adapter).
@@ -104,6 +106,8 @@ export function createPortalService({store, ledger}) {
       if (!item) throw new PortalError('NOT_FOUND','المستند غير موجود.',404);
       return {url:await store.signed(action === 'proof' ? 'accounting-proofs' : 'accounting-documents',item.proof_path || item.file_path)};
     }
+    const result=await officeLink(action,input,actor);
+    if(result!==undefined)return result;
     throw new PortalError('UNKNOWN_ACTION','الإجراء غير معروف.');
   };
 }

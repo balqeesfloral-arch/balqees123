@@ -1,44 +1,83 @@
 {
-  "version": "26.2.4",
+  "version": "26.3.0",
+  "websiteVersion": "10.50.0",
   "passed": true,
+  "date": "2026-10-09T15:38:53.807Z",
+  "unitTests": {
+    "website": 48,
+    "office": 7,
+    "failed": 0
+  },
   "widths": [
-    1440,
+    1360,
     768,
     390,
     320
   ],
-  "checks": [
-    "authenticated startup",
-    "global Arabic/digit search",
-    "old record opening with current version",
-    "literal untrusted titles",
-    "search failure retry",
-    "numeric ascending/descending sorting",
-    "status and text filters",
-    "visible-only CSV export",
-    "formula protection",
-    "existing record creation",
-    "persistent UI density only",
-    "original statement graphics",
-    "mobile drawer focus/inert",
-    "mobile search/form bounds",
-    "no overall horizontal overflow",
-    "expired search session",
-    "signed-out data gate",
-    "zero unhandled page errors"
+  "browserChecks": [
+    "website inbox and current source details",
+    "stable update command after lost response",
+    "one import after ledger reconciliation",
+    "verified proof allocation to matching order",
+    "RFQ pricing",
+    "B2B scope quotation",
+    "contract financial source",
+    "Office attachment delivery",
+    "new customer creation and mapping",
+    "Arabic RTL and no horizontal overflow",
+    "no unhandled browser errors",
+    "existing customer financial center and payment proof submission"
   ],
-  "saveRequests": 1,
-  "date": "2026-10-09T12:19:26.747Z",
-  "unitTests": {
-    "passed": 7,
-    "failed": 0,
-    "command": "npm test"
+  "databaseChecks": [
+    "durable claims and immutable mappings",
+    "RFQ pricing, notifications and optimistic concurrency",
+    "B2B VAT, publishing and duplicate prevention",
+    "exact-account order payment and no proof reuse",
+    "customer RPC denial and forged metadata denial",
+    "fresh revoked-admin rejection"
+  ],
+  "regressionSQL": {
+    "accounting": 10,
+    "quotationRequests": 9,
+    "whatsappHandoff": 6,
+    "allPassed": true
   },
+  "testIsolation": "Browser and Google calls use local fixtures; SQL transactions roll back all test users, notifications and records.",
   "originalInlineSha256": "9a55b769fe4b56ab34bb7e7c548c3a5286d93afd92afb95194632885017bb655",
   "originalPdfVersion": "v27.4.22",
-  "baselineRegressionTests": {
-    "passed": 32,
-    "failed": 0
+  "previousOfficeUiVerification": {
+    "version": "26.2.4",
+    "date": "2026-10-09T12:19:26.747Z",
+    "checks": [
+      "authenticated startup",
+      "global Arabic/digit search",
+      "old record opening with current version",
+      "literal untrusted titles",
+      "search failure retry",
+      "numeric ascending/descending sorting",
+      "status and text filters",
+      "visible-only CSV export",
+      "formula protection",
+      "existing record creation",
+      "persistent UI density only",
+      "original statement graphics",
+      "mobile drawer focus/inert",
+      "mobile search/form bounds",
+      "no overall horizontal overflow",
+      "expired search session",
+      "signed-out data gate",
+      "zero unhandled page errors"
+    ],
+    "widths": [
+      1440,
+      768,
+      390,
+      320
+    ]
   },
-  "protectedFilesUnchanged": 13
+  "securityReview": {
+    "newPrivateTables": "RLS enabled; no browser grants or policies, by design",
+    "existingAuthNotice": "Leaked password protection is disabled in existing project configuration; not changed in this release",
+    "authNoticeDocumentation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+  }
 }

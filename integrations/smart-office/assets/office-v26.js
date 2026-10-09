@@ -1,6 +1,6 @@
 import {normalizeSearch,compareValues,buildCsv} from './office-tools.js';
 
-const VERSION = '26.2.4';
+const VERSION = '26.3.0';
 const $ = selector => document.querySelector(selector);
 const create = (tag,className,text) => {
   const node=document.createElement(tag);
@@ -43,7 +43,7 @@ function addWorkspace() {
   }
   grid.append(
     shortcut('button','search','البحث في المكتب','عميل، فاتورة، مشروع أو مستند.',link=>link.addEventListener('click',openSearch)),
-    shortcut('button','wallet','حسابات العملاء والموقع','مطابقة الحوالات ونشر كشوف الحساب.',link=>link.dataset.nav='portal'),
+    shortcut('button','wallet','ربط الموقع والمكتب','الطلبات والتسعير والعملاء والكشوف والسداد.',link=>link.dataset.nav='portal'),
     shortcut('a','quotes','طلبات تسعير الموقع','فتح لوحة المبيعات لمراجعة الطلبات وتسعيرها.',link=>{
       link.href='https://balqeesfloral.vercel.app/admin/quote-requests';link.target='_blank';link.rel='noopener noreferrer';
       link.append(create('span','office-external','↗'));

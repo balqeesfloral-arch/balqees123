@@ -1,13 +1,13 @@
 
 import crypto from 'node:crypto';
 import { searchOfficeRows, prepareSearch } from './office-search.js';
-import { PortalError, strictClientRows, verifyTransfer, possibleDuplicateTransfer } from './portal-domain.js';
+import { PortalError, strictClientRows, verifyTransfer, possibleDuplicateTransfer, validateAttachment } from './portal-domain.js';
 import {
   batchGetSheets, getSheetValues, updateRow, appendRow, batchUpdateRows,
-  createDriveFolder, uploadDriveFile, copyDriveFile
+  createDriveFolder, uploadDriveFile, copyDriveFile, readDriveAttachment
 } from './google.js';
 
-export const APP_VERSION = '26.2.4';
+export const APP_VERSION = '26.3.0';
 const DB_ID = process.env.BALQEES_SPREADSHEET_ID || '';
 const TZ = 'Asia/Riyadh';
 
@@ -731,4 +731,53 @@ export async function preparePortalTransfer(payment,link,proof) {
 export async function appendPortalTransfer(prepared) {
   // Google append is invoked once. A timeout must be reconciled, never retried.
   return appendRow('الحوالات',rowValues(prepared.headers,prepared.record));
+}
+
+export async function findPortalRecord(entity,id) {
+  if(!['clients','projects','quotes','contracts'].includes(entity))throw new PortalError('SOURCE_INVALID','نوع سجل المكتب غير صالح.');
+  const cfg=entityCfg(entity),rows=rowsFromValues(await getSheetValues(cfg.sheet),true).filter(r=>r.id===id||r[cfg.number]===`WEB-${id}`);
+  if(rows.length>1)throw new PortalError('LEDGER_CONFLICT','مرجع السجل مكرر في المكتب ويحتاج مراجعة.',409);
+  return rows[0]||null;
+}
+export async function preparePortalRecord(job) {
+  const {entity,record}=job.payload;
+  if(!['clients','projects','quotes','contracts'].includes(entity))throw new PortalError('SOURCE_INVALID','نوع السجل غير صالح.');
+  const cfg=entityCfg(entity),all=await batchGetSheets([...new Set([cfg.sheet,'العملاء','الإعدادات'])]);
+  const headers=headersFromValues(all[cfg.sheet]);
+  for(const key of ['id',cfg.number,'created_at','updated_at','version','deleted_at',...Object.keys(record)]) {
+    if(!headers.includes(key))throw new PortalError('LEDGER_SCHEMA','أعمدة سجل المكتب غير مكتملة. راجع الجدول قبل الاستيراد.',409);
+  }
+  if(rowsFromValues(all[cfg.sheet],true).some(r=>r.id===job.id||r[cfg.number]===`WEB-${job.id}`))throw new PortalError('RECONCILE_REQUIRED','ظهر القيد في المكتب. أعد التحقق من حالة الاستيراد.',409);
+  const clients=rowsFromValues(all['العملاء']);
+  if(entity==='clients') {
+    const phone=v=>String(v||'').replace(/\D/g,'').replace(/^00966/,'966').replace(/^0(?=5)/,'966');
+    if(clients.some(c=>(record.email&&String(c.email||'').trim().toLowerCase()===record.email.toLowerCase())||(record.phone&&phone(c.phone)===phone(record.phone))))throw new PortalError('CLIENT_EXISTS','يوجد عميل في المكتب بنفس البريد أو الجوال. اربطه بالحساب بدل إنشاء عميل آخر.',409);
+  } else if(!clients.some(c=>String(c.id)===record.client_id))throw new PortalError('CLIENT_NOT_FOUND','عميل المكتب محذوف أو غير موجود.',409);
+  const rec={...record,id:job.id,[cfg.number]:`WEB-${job.id}`,created_at:now(),updated_at:now(),version:1,deleted_at:''};
+  // These snapshots contain only source values verified on the server; no
+  // sequence allocation or financial append is needed for operational imports.
+  return {sheet:cfg.sheet,headers,record:rec};
+}
+export async function appendPortalRecord(prepared) {
+  return appendRow(prepared.sheet,rowValues(prepared.headers,prepared.record));
+}
+const PORTAL_DOCUMENTS={receivables:{type:'invoice',title:'فاتورة',number:'invoice_no'},quotes:{type:'quotation',title:'عرض سعر',number:'quote_no'},contracts:{type:'contract',title:'عقد',number:'contract_no'},transfers:{type:'receipt',title:'إيصال سداد',number:'transfer_no'}};
+const attachmentId=value=>{
+  if(!value)return '';
+  try {const x=typeof value==='string'&&value.startsWith('{')?JSON.parse(value):value;return typeof x==='object'?x.id||'':String(x);}catch{return '';}
+};
+function documentOwner(entity,r,clientId) {
+  if(!r)return false;
+  return entity==='transfers'?r.party_type==='عميل'&&r.direction==='وارد'&&String(r.party_id)===clientId:String(r.client_id)===clientId;
+}
+export async function getPortalDocuments(clientId) {
+  const entries=Object.entries(PORTAL_DOCUMENTS),all=await batchGetSheets(entries.map(([e])=>ENTITY[e].sheet));
+  return entries.flatMap(([entity,doc])=>rowsFromValues(all[ENTITY[entity].sheet]).filter(r=>documentOwner(entity,r,clientId)&&attachmentId(r[ENTITY[entity].file])).map(r=>({entity,id:r.id,title:`${doc.title} ${r[doc.number]||''}`,document_type:doc.type,date:r.date||r.invoice_date||r.start_date||r.created_at}))).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+}
+export async function getPortalDocument(entity,id,clientId) {
+  const doc=PORTAL_DOCUMENTS[entity];if(!doc)throw new PortalError('SOURCE_INVALID','اختر مستندًا من سجل المكتب.');
+  const cfg=ENTITY[entity],matches=rowsFromValues(await getSheetValues(cfg.sheet)).filter(r=>String(r.id)===id);
+  const row=matches[0];if(matches.length!==1||!documentOwner(entity,row,clientId))throw new PortalError('CLIENT_MISMATCH','هوية العميل لا تطابق المستند أو أن المستند غير موجود.',409);
+  try {return {...validateAttachment(await readDriveAttachment(attachmentId(row[cfg.file]))),title:`${doc.title} ${row[doc.number]||''}`.slice(0,200),documentType:doc.type};}
+  catch(error){if(error instanceof PortalError)throw error;throw new PortalError('FILE_UNAVAILABLE','تعذر قراءة المرفق من المكتب. استخدم PDF أو صورة حتى 3 MB وتحقق من صلاحية الملف.',409);}
 }

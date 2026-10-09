@@ -233,6 +233,21 @@ export async function copyDriveFile(fileId, name, parentId) {
   return data;
 }
 
+// Only called after the ledger record and its client ID have been checked.
+export async function readDriveAttachment(fileId) {
+  if (!/^[a-zA-Z0-9_-]{10,160}$/.test(String(fileId))) throw new Error('Drive file reference invalid');
+  const meta=await googleFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=id,name,mimeType,size,trashed`);
+  if(meta.trashed||!['application/pdf','image/png','image/jpeg','image/webp'].includes(meta.mimeType)||Number(meta.size)>3*1024*1024)throw new Error('Attachment format or size unsupported');
+  const token=await getGoogleAccessToken();
+  const res=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(18000)});
+  if(!res.ok)throw new Error('Drive attachment unavailable');
+  const reader=res.body.getReader(),chunks=[];let size=0;
+  try {
+    while(true){const{done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>3*1024*1024){await reader.cancel();throw new Error('Drive attachment too large');}chunks.push(Buffer.from(value));}
+  } finally {reader.releaseLock();}
+  return {name:meta.name,type:meta.mimeType,base64:Buffer.concat(chunks).toString('base64')};
+}
+
 export function columnName(n) {
   let s = '';
   while (n > 0) {

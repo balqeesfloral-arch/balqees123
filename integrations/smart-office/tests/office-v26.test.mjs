@@ -89,5 +89,5 @@ test('original office/PDF code and embedded brand assets stay byte-identical to 
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   const original=html.match(/<script>([\s\S]*?)<\/script>/)[1];
   assert.equal(createHash('sha256').update(original).digest('hex'),'9a55b769fe4b56ab34bb7e7c548c3a5286d93afd92afb95194632885017bb655');
-  assert.match(html,/<meta name="application-version" content="26\.2\.4">/);
+  assert.match(html,/<meta name="application-version" content="26\.3\.0">/);
 });

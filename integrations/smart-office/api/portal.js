@@ -2,13 +2,15 @@ import { verifySession } from '../lib/auth.js';
 import { createPortalStore } from '../lib/portal-store.js';
 import { createPortalService } from '../lib/portal-service.js';
 import { PortalError } from '../lib/portal-domain.js';
-import { getPortalClients, getReport, getBootstrap, findPortalTransfer, preparePortalTransfer, appendPortalTransfer } from '../lib/balqees-db.js';
+import { getPortalClients, getReport, getBootstrap, findPortalTransfer, preparePortalTransfer, appendPortalTransfer, findPortalRecord, preparePortalRecord, appendPortalRecord, getPortalDocuments, getPortalDocument } from '../lib/balqees-db.js';
 
 export const config = { maxDuration:60 };
 const ledger = {
   clients:getPortalClients,statement:filters => getReport('client_statement',filters),
   company:async () => (await getBootstrap()).company,
   find:findPortalTransfer,prepare:preparePortalTransfer,append:appendPortalTransfer,
+  findRecord:findPortalRecord,prepareRecord:preparePortalRecord,appendRecord:appendPortalRecord,
+  documents:getPortalDocuments,document:getPortalDocument,
 };
 export function createHandler({makeStore = createPortalStore, officeSession = verifySession, accounting = ledger, env = process.env} = {}) {
   return async function handler(req,res) {
