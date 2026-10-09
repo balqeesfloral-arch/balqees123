@@ -79,6 +79,11 @@ test('B2B quotations and contract finance use the authoritative sources',()=>{
   const c=importPayload('contracts',{...order,organization_id:org,status:'active',contract_number:'C-01',contract_value:999},l,{financial:{contract_value:250}});
   assert.equal(c.record.value,250);
 });
+test('VAT-inclusive B2B quotes are not taxed twice when imported into Office',()=>{
+  const org='20000000-0000-4000-8000-000000000010',l={...link,user_id:null,organization_id:org};
+  const source={...order,organization_id:org,status:'sent',quote_number:2,vat_rate:15,subtotal:125,discount_total:10,vat_total:15,total:115,prices_include_vat:true};
+  const result=importPayload('quotations',source,l);assert.equal(result.record.subtotal,100);assert.equal(result.record.vat_amount,15);assert.equal(result.record.total,115);
+});
 test('reconciliation rejects deleted, altered or nonnumeric ledger records',()=>{
   const job={id:jobId,payload:{record:{client_id:'c1',contract_value:115}}};
   assert.equal(verifyImportedRecord({id:jobId,client_id:'c1',contract_value:'115'},job).id,jobId);

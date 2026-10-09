@@ -63,8 +63,15 @@ export function importPayload(kind,source,link,{items=[],financial=null,vatRate=
   if (kind==='quotations'&&!['sent','viewed','accepted','declined','revision_requested','expired'].includes(source.status)) throw new PortalError('SOURCE_NOT_READY','انشر العرض من الموقع قبل استيراده إلى المكتب.',409);
   const total=Number(kind==='rfq'?source.quote_amount:source.total),vat=Number(kind==='rfq'?vatRate:source.vat_rate);
   if (!Number.isFinite(total)||total<=0||!Number.isFinite(vat)||vat<0||vat>100) throw new PortalError('PRICE_INVALID','راجع مبلغ العرض ونسبة الضريبة.',409);
-  const subtotal=kind==='rfq'?round(total/(1+vat/100)):Number(source.subtotal)-Number(source.discount_total||0);
+  const subtotal=kind==='rfq'?round(total/(1+vat/100)):round(total-Number(source.vat_total));
   const vatAmount=kind==='rfq'?round(total-subtotal):Number(source.vat_total);
+  if(kind==='quotations') {
+    // Supabase keeps subtotal/discount in the entered price basis, which may
+    // include VAT. Office needs the net amount excluding VAT in both cases.
+    const grossNet=round(Number(source.subtotal)-Number(source.discount_total||0));
+    const expected=source.prices_include_vat===true?grossNet:round(grossNet+vatAmount);
+    if(!Number.isFinite(expected)||Math.abs(expected-total)>.01||!Number.isFinite(vatAmount)||vatAmount<0||subtotal<0)throw new PortalError('PRICE_MISMATCH','راجع أساس الضريبة ومجموع العرض في الموقع.',409);
+  }
   if (Math.abs(round(subtotal+vatAmount)-total)>.01) throw new PortalError('PRICE_MISMATCH','مجموع العرض والضريبة غير متطابق. راجع العرض في الموقع.',409);
   return {entity:'quotes',record:{...record,date:date(),description:kind==='rfq'?clean(source.admin_reply,4000):`${clean(source.title_ar,200)}\n${items.map(x=>`${clean(x.description_ar,1000)} × ${x.quantity}`).join('\n')}\n${clean(source.terms_ar,4000)}`,
     subtotal,vat_rate:vat,vat_amount:vatAmount,total,valid_until:source.quote_valid_until||source.valid_until||'',status:source.status==='accepted'?'مقبول':source.status==='declined'?'مرفوض':'أرسل',followup_date:'',probability:source.status==='accepted'?100:0}};

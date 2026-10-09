@@ -58,7 +58,7 @@
     {
       "path": "docs/QA-REPORT.json",
       "bytes": 2692,
-      "sha256": "00ed15da972d1ce282546b8eb834f7a3f5820c68abaf20fdeb73c661230c467a"
+      "sha256": "644e7b766e90f97c377efe9977d98caae51644a09f9f55183066d3935e6da89a"
     },
     {
       "path": "index.html",
@@ -82,8 +82,8 @@
     },
     {
       "path": "lib/office-link-domain.js",
-      "bytes": 7786,
-      "sha256": "380bd573ef30952d0511ba734b7d95a7b236936ecaca6daef14cf0a261a98cff"
+      "bytes": 8367,
+      "sha256": "bc0373efa5190b0c1410da4521547700ab9f5c41bb6c4a6ddd642785d131ade5"
     },
     {
       "path": "lib/office-link-service.js",

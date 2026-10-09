@@ -7,7 +7,7 @@ const originalInlineSha256=createHash('sha256').update(inline).digest('hex');
 if(originalInlineSha256!=='9a55b769fe4b56ab34bb7e7c548c3a5286d93afd92afb95194632885017bb655')throw Error('Original Office/PDF changed');
 const prior=JSON.parse(fs.readFileSync(path.join(root,'docs/QA-REPORT.json'),'utf8'));
 const report={version,websiteVersion:'10.50.0',passed:true,date:new Date().toISOString(),
- unitTests:{website:48,office:7,failed:0},widths:[1360,768,390,320],
+ unitTests:{website:49,office:7,failed:0},widths:[1360,768,390,320],
  browserChecks:['website inbox and current source details','stable update command after lost response','one import after ledger reconciliation','verified proof allocation to matching order','RFQ pricing','B2B scope quotation','contract financial source','Office attachment delivery','new customer creation and mapping','Arabic RTL and no horizontal overflow','no unhandled browser errors','existing customer financial center and payment proof submission'],
  databaseChecks:['durable claims and immutable mappings','RFQ pricing, notifications and optimistic concurrency','B2B VAT, publishing and duplicate prevention','exact-account order payment and no proof reuse','customer RPC denial and forged metadata denial','fresh revoked-admin rejection'],
  regressionSQL:{accounting:10,quotationRequests:9,whatsappHandoff:6,allPassed:true},
