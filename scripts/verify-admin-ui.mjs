@@ -36,7 +36,8 @@ let saveCount = 0;
 let failureTable = '';
 let rejectSave = false;
 let rejectQuote = false, quoteSubmissions = 0;
-const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5189', '--strictPort'], { env: { ...process.env, VITE_SUPABASE_URL: api, VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ui_fixture' }, stdio: ['ignore', 'pipe', 'pipe'] });
+let whatsappDraftOpens=0;
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5189', '--strictPort'], { env: { ...process.env, VITE_PUBLIC_SITE_URL:origin, VITE_SUPABASE_URL: api, VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ui_fixture' }, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', value => { serverLog += value; });
 server.stderr.on('data', value => { serverLog += value; });
@@ -55,12 +56,17 @@ function filterRows(rows, params) {
     return true;
   }));
 }
-async function contextFor({ role = 'admin', claimedRole = role, blocked = false, mfa = false } = {}) {
+async function contextFor({ role = 'admin', claimedRole = role, blocked = false, mfa = false, signedIn = role!=='guest' } = {}) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, reducedMotion: 'reduce' });
+  const claims = { sub: userId, role: 'authenticated', aal: 'aal1', amr: [{ method: 'password', timestamp: 1 }], exp: Math.floor(Date.now() / 1000) + 7200, app_metadata: { role: claimedRole } };
+  const token = [Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url'), Buffer.from(JSON.stringify(claims)).toString('base64url'), 'fixture'].join('.');
   await context.route(`${api}/**`, async route => {
     const request = route.request(), url = new URL(request.url());
     const response = (body, status = 200, headers = {}) => route.fulfill({ status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range', ...headers }, body: request.method() === 'HEAD' ? '' : JSON.stringify(body) });
-    if (url.pathname.startsWith('/auth/')) return response({ ...user, app_metadata: { role }, factors: mfa ? [{ factor_type: 'totp', status: 'verified' }] : [] });
+    if (url.pathname.startsWith('/auth/')) {
+      const authUser={ ...user, app_metadata: { role }, factors: mfa ? [{ factor_type: 'totp', status: 'verified' }] : [] };
+      return response(url.pathname.endsWith('/token')?{access_token:token,refresh_token:'fixture',token_type:'bearer',expires_in:7200,user:authUser}:authUser);
+    }
     const table = url.pathname.split('/').at(-1);
     if (url.pathname.includes('/rpc/')) {
       if(table==='submit_quote_request') {
@@ -122,15 +128,14 @@ async function contextFor({ role = 'admin', claimedRole = role, blocked = false,
     return response(request.headers().accept?.includes('object') ? limited[0] || null : limited, 200, { 'Content-Range': `${count ? '0-' + (count - 1) : '*'}/${count}` });
   });
   await context.route('https://balqees-smart-office.vercel.app/api/portal', route => route.fulfill({status:503,headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'},body:JSON.stringify({ok:false,error:'ربط المكتب بالموقع لم يُفعّل بعد.'})}));
+  await context.route('https://wa.me/**',route=>{whatsappDraftOpens++;return route.fulfill({contentType:'text/html',body:'<main>Isolated WhatsApp draft fixture</main>'});});
   await context.routeWebSocket(`${api.replace('https', 'wss')}/**`, socket => {
     socket.onMessage(message => {
       const [join, ref, topic, event] = JSON.parse(String(message));
       socket.send(JSON.stringify([join, ref, topic, 'phx_reply', { status: 'ok', response: event === 'phx_join' ? { postgres_changes: [] } : {} }]));
     });
   });
-  if (role !== 'guest') {
-    const claims = { sub: userId, role: 'authenticated', aal: 'aal1', amr: [{ method: 'password', timestamp: 1 }], exp: Math.floor(Date.now() / 1000) + 7200, app_metadata: { role: claimedRole } };
-    const token = [Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url'), Buffer.from(JSON.stringify(claims)).toString('base64url'), 'fixture'].join('.');
+  if (signedIn) {
     await context.addInitScript(({ token, user, role, mfa }) => {
       if (location.protocol !== 'http:') return;
       localStorage.setItem('balqees-lang', 'ar');
@@ -299,6 +304,9 @@ try {
   await customer.page.getByRole('heading',{name:'وصل طلبك إلى إدارة بلقيس',exact:true}).waitFor();
   assert.equal(quoteSubmissions,before+1);assert.equal(fixtures.quote_requests[0].service_type,'weekly_flowers');
   const rfqId=fixtures.quote_requests[0].id;
+  const serviceDraft=new URL(await customer.page.locator('.rfq-success .rfq-whatsapp-button').getAttribute('href')).searchParams.get('text');
+  assert.ok(serviceDraft.includes('عقد الورد الأسبوعي'));assert.ok(serviceDraft.includes('6 شهر'));assert.ok(serviceDraft.includes('/admin/quote-requests?request='+rfqId));
+  assert.equal(whatsappDraftOpens,0,'Saving a request must not open or send WhatsApp');
   await customer.page.goto(origin+'/request-quote?product='+p1+'&quantity=2');
   await customer.page.locator('.rfq-products article').waitFor();
   await customer.page.getByLabel('المدينة والموقع',{exact:true}).fill('مكة');
@@ -308,16 +316,43 @@ try {
   await customer.page.getByRole('heading',{name:'وصل طلبك إلى إدارة بلقيس',exact:true}).waitFor();
   assert.equal(fixtures.quote_requests[0].items[0].quantity,2);
   fixtures.products.find(p=>p.id===p1).price_on_request=true;
-  await customer.page.evaluate(({userId,p1})=>localStorage.setItem('balqees-store-cart-v1:'+userId,JSON.stringify([{product_id:p1,quantity:2}])),{userId,p1});
+  quoteProduct.visibility='public';
+  await customer.page.evaluate(({userId,p1,p2})=>localStorage.setItem('balqees-store-cart-v1:'+userId,JSON.stringify([{product_id:p1,quantity:2},{product_id:p2,quantity:3}])),{userId,p1,p2:quoteProduct.id});
   await customer.page.goto(origin+'/account/cart');
   await customer.page.getByRole('button',{name:'متابعة لطلب التسعير',exact:true}).waitFor();
   await customer.page.getByRole('button',{name:'متابعة لطلب التسعير',exact:true}).click();
   await customer.page.locator('.rfq-form').waitFor();assert.match(customer.page.url(),/request-quote\?source=cart/);
+  assert.equal(await customer.page.locator('.rfq-form .rfq-products article').count(),2);
+  await customer.page.getByLabel('المدينة والموقع',{exact:true}).fill('مكة — طلب منتجات كامل');
+  await customer.page.getByLabel('تفاصيل الاحتياج',{exact:true}).fill('تسعير كل المنتجات المختارة مع التوريد للموقع.');
+  await customer.page.getByLabel('رقم الجوال',{exact:true}).fill('0500000000');
+  await customer.page.getByRole('button',{name:'إرسال طلب عرض السعر',exact:true}).click();
+  await customer.page.locator('.rfq-success .rfq-whatsapp-button').waitFor();
+  const cartRfq=fixtures.quote_requests[0];
+  assert.equal(cartRfq.product_snapshot.length,2);
+  const cartDraft=new URL(await customer.page.locator('.rfq-success .rfq-whatsapp-button').getAttribute('href')).searchParams.get('text');
+  assert.ok(cartDraft.includes('باقة اختبار بيضاء [TEST-1] — 2 قطعة'));
+  assert.ok(cartDraft.includes('شجرة اختبار بعرض سعر')&&cartDraft.includes('— 3 قطعة'));
+  for(const width of [1440,390,320]){
+    await customer.page.setViewportSize({width,height:1050});
+    assert.ok(await customer.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`WhatsApp handoff overflow at ${width}px`);
+    await customer.page.screenshot({path:path.join(screenshots,`quotation-whatsapp-${width}.png`),fullPage:true});
+  }
+  const popupPromise=customer.context.waitForEvent('page');
+  await customer.page.locator('.rfq-success .rfq-whatsapp-button').click();
+  const popup=await popupPromise;await popup.waitForLoadState();
+  assert.equal(new URL(popup.url()).searchParams.get('text'),cartDraft);
+  assert.equal(whatsappDraftOpens,1);assert.equal(cartRfq.status,'submitted');
+  await popup.close();
+  await customer.page.reload();
+  await customer.page.locator(`#rfq-${cartRfq.id} .rfq-whatsapp-button`).waitFor();
+  assert.equal(new URL(await customer.page.locator(`#rfq-${cartRfq.id} .rfq-whatsapp-button`).getAttribute('href')).searchParams.get('text'),cartDraft);
   await customer.context.close();await browser.close();
   browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE||undefined,headless:true,args:process.env.CHROME_EXECUTABLE?['--no-sandbox','--no-zygote','--single-process','--disable-dev-shm-usage']:[]});
   const reviewer=await contextFor();await open(reviewer.page,'/admin/quote-requests?request='+rfqId);
   await reviewer.page.locator('.admin-rfq-detail form').waitFor();
-  await reviewer.page.locator('.admin-rfq-detail select').selectOption('quoted');
+  await reviewer.page.getByRole('button',{name:'تسجيل عرض السعر',exact:true}).click();
+  assert.equal(await reviewer.page.getByLabel('إجمالي عرض السعر (ر.س)',{exact:true}).evaluate(el=>el===document.activeElement),true);
   await reviewer.page.getByLabel('الرد للعميل ونطاق العرض',{exact:true}).fill('عرض عقد الورد الأسبوعي يشمل ثلاث فازات وزيارات التوريد والضريبة.');
   await reviewer.page.getByLabel('إجمالي عرض السعر (ر.س)',{exact:true}).fill('1500');
   await reviewer.page.getByRole('button',{name:'حفظ وإشعار العميل',exact:true}).click();
@@ -328,8 +363,43 @@ try {
     assert.ok(await reviewer.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`Admin RFQ overflow at ${width}px`);
     await reviewer.page.screenshot({path:path.join(screenshots,`quotation-admin-${width}.png`),fullPage:true});
   }
+  // A link to a saved request remains useful after it leaves the recent list.
+  const actualRequests=[...fixtures.quote_requests];
+  fixtures.quote_requests=[...Array.from({length:260},(_,i)=>({...actualRequests[0],id:crypto.randomUUID(),request_number:1000+i,status:'submitted',admin_reply:null,quote_amount:null})),...actualRequests];
+  await reviewer.page.goto(origin+'/account?next='+encodeURIComponent('/admin/quote-requests?request='+rfqId));
+  await reviewer.page.locator('.admin-rfq-detail form').waitFor();
+  assert.match(reviewer.page.url(),new RegExp('request='+rfqId));
+  assert.equal(await reviewer.page.getByLabel('إجمالي عرض السعر (ر.س)',{exact:true}).inputValue(),'1500');
+  await reviewer.page.goto(origin+'/admin/quote-requests?request='+crypto.randomUUID());
+  await reviewer.page.getByText('لم نعثر على هذا الطلب. تحقق من الرابط أو اختر طلبًا من القائمة.',{exact:true}).waitFor();
+  assert.equal(await reviewer.page.locator('.admin-rfq-detail form').count(),0);
   await reviewer.context.close();assert.deepEqual(errors,[]);
-  console.log('PASS: service CTA, sign-in return, RFQ failure recovery, double-submit guard, product quantity, quote cart routing and admin quotation reply; RTL at 320/390/1440px');
+  await browser.close();browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE||undefined,headless:true,args:process.env.CHROME_EXECUTABLE?['--no-sandbox','--no-zygote','--single-process','--disable-dev-shm-usage']:[]});
+  const freshSales=await contextFor({role:'admin',signedIn:false});
+  await freshSales.page.goto(origin+'/admin/quote-requests?request='+rfqId);
+  const salesLogin=freshSales.page.getByRole('link',{name:'تسجيل دخول المدير',exact:true});await salesLogin.waitFor();
+  assert.equal(new URL(await salesLogin.getAttribute('href'),origin).searchParams.get('next'),'/admin/quote-requests?request='+rfqId);
+  await salesLogin.click();
+  await freshSales.page.getByPlaceholder('name@company.com',{exact:true}).fill('admin@example.test');
+  await freshSales.page.locator('input[autocomplete="current-password"]').fill('Local-fixture-123!');
+  await freshSales.page.locator('.auth-form button[type="submit"]').click();
+  await freshSales.page.locator('.admin-rfq-detail form').waitFor();
+  assert.match(freshSales.page.url(),new RegExp('request='+rfqId));
+  await freshSales.context.close();
+  await browser.close();browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE||undefined,headless:true,args:process.env.CHROME_EXECUTABLE?['--no-sandbox','--no-zygote','--single-process','--disable-dev-shm-usage']:[]});
+  const quotationCustomer=await contextFor({role:'customer'});
+  await quotationCustomer.page.goto(origin+'/request-quote?request='+rfqId);
+  await quotationCustomer.page.locator(`#rfq-${rfqId} .rfq-reply b`).waitFor();
+  assert.match(await quotationCustomer.page.locator(`#rfq-${rfqId} .rfq-reply b`).innerText(),/١٬٥٠٠|1,500|1500/);
+  await quotationCustomer.context.close();
+  await browser.close();browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE||undefined,headless:true,args:process.env.CHROME_EXECUTABLE?['--no-sandbox','--no-zygote','--single-process','--disable-dev-shm-usage']:[]});
+  const mfaSales=await contextFor({role:'admin',mfa:true});
+  await mfaSales.page.goto(origin+'/admin/quote-requests?request='+rfqId);
+  await mfaSales.page.waitForURL(url=>url.pathname==='/account');
+  assert.equal(new URL(mfaSales.page.url()).searchParams.get('next'),'/admin/quote-requests?request='+rfqId);
+  assert.equal(await mfaSales.page.locator('.admin-app').count(),0);
+  await mfaSales.context.close();assert.deepEqual(errors,[]);
+  console.log('PASS: saved WhatsApp drafts, full quote-only cart, manual handoff without status change, history retry, protected pricing link, guest sign-in/MFA return, old-request deep links and customer quotation; RTL at 320/390/1440px');
   console.log('Admin UI verification passed; screenshots are in preview/admin.');
 } finally {
   await browser?.close();

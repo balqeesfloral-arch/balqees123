@@ -28,6 +28,16 @@ export function safeQuoteReturn(value) {
   if(!value || !/^\/request-quote(?:\?[^#\r\n]*)?$/.test(value)) return null;
   return value;
 }
+export function adminQuoteRequestPath(id) {
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id||''))) return null;
+  return `/admin/quote-requests?request=${String(id).toLowerCase()}`;
+}
+export function safeAdminQuoteReturn(value) {
+  if(typeof value!=='string'||!value.startsWith('/admin/quote-requests?')||/[#\r\n\\]/.test(value)) return null;
+  const params=new URLSearchParams(value.slice(value.indexOf('?')+1));
+  if([...params.keys()].length!==1||!params.has('request')) return null;
+  return adminQuoteRequestPath(params.get('request'));
+}
 export function validateQuoteForm(form,ar=true) {
   if(String(form.contact_name||'').trim().length<2) return ar?'أدخل اسم جهة التواصل.':'Enter a contact name.';
   if(!/^\+?[0-9 ()-]{8,24}$/.test(String(form.phone||'').trim())) return ar?'أدخل رقم جوال صحيحًا.':'Enter a valid phone number.';

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { safeQuoteReturn } from '../lib/quoteRequests';
+import { safeQuoteReturn, safeAdminQuoteReturn } from '../lib/quoteRequests';
 import {
   ArrowLeft,
   ArrowRight,
@@ -273,7 +273,8 @@ export default function Account({ lang, setLang }) {
     }
     if (!error && data?.user?.app_metadata?.role === 'admin') {
       setLoading(false);
-      if(!safeQuoteReturn(new URLSearchParams(location.search).get('next'))) navigate('/admin', { replace: true });
+      const next=new URLSearchParams(location.search).get('next');
+      if(!safeQuoteReturn(next)) navigate(safeAdminQuoteReturn(next)||'/admin', { replace: true });
       return;
     }
     if (!error && data?.user?.id) {
@@ -401,7 +402,8 @@ export default function Account({ lang, setLang }) {
     const next = new URLSearchParams(location.search).get('next');
     const quoteReturn=safeQuoteReturn(next);
     if(quoteReturn) return navigate(quoteReturn,{replace:true});
-    if (next === '/admin' && session.user?.app_metadata?.role === 'admin') return navigate('/admin', { replace: true });
+    const adminQuoteReturn=safeAdminQuoteReturn(next);
+    if ((next === '/admin'||adminQuoteReturn) && session.user?.app_metadata?.role === 'admin') return navigate(adminQuoteReturn||'/admin', { replace: true });
     if (next === '/portal' && accountType === 'company') return navigate('/portal', { replace: true });
     if (next === '/checkout' && accountType === 'individual') return navigate('/checkout', { replace: true });
     if (next === '/store' || (next && /^\/store\/[A-Za-z0-9._~%-]+$/.test(next))) return navigate(next, { replace: true });
