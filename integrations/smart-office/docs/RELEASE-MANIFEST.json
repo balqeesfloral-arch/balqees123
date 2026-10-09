@@ -1,0 +1,143 @@
+{
+  "application": "Balqees Smart Office",
+  "version": "26.2.4",
+  "pdfVersion": "v27.4.22",
+  "baseCommit": "666a8b83d4653f8a0738511611004ce08d16c114",
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 1259,
+      "sha256": "8445242ada2ce00532bb420ce21b99f0433befcf26e8a17d440bdc508e3ff077"
+    },
+    {
+      "path": "README-AR.md",
+      "bytes": 5841,
+      "sha256": "48b9bee8af0f3115b3c1a53f507d3f10bae14fe59d9675a0a112c1bc397e246a"
+    },
+    {
+      "path": "README-FIRST.txt",
+      "bytes": 965,
+      "sha256": "95b4a12b56b5f45765e1bde3d98a1df2b6414ad4f5b41ac25292129792fd7a92"
+    },
+    {
+      "path": "api/auth.js",
+      "bytes": 882,
+      "sha256": "59be1711befea1a88fbc7720775ba600f0f974385f3bc95d7aed1f16a828bdf8"
+    },
+    {
+      "path": "api/balqees.js",
+      "bytes": 2180,
+      "sha256": "11ed9ac185b011aa869b96ab905ec9cec37f5dab712ccab85972ed346d9e559e"
+    },
+    {
+      "path": "api/config.js",
+      "bytes": 286,
+      "sha256": "7b1746979e13eb38d78d430ce3e152f24df15848da8cb944d20c1dfeec9949c4"
+    },
+    {
+      "path": "api/logout.js",
+      "bytes": 326,
+      "sha256": "982ffc33e0027bf86bd5b5f6bd5f43478dfa701f179dd4129a12cb8e4a64fd44"
+    },
+    {
+      "path": "api/portal.js",
+      "bytes": 3621,
+      "sha256": "d9db14587c0b8a95e4d0444e1021951102c8ea82f5c4a1906780ba90eedf918e"
+    },
+    {
+      "path": "api/session.js",
+      "bytes": 397,
+      "sha256": "e03681d71d163a33680ffcad78b394fe4db0fda8a67b180507a455de78640c62"
+    },
+    {
+      "path": "assets/office-tools.js",
+      "bytes": 1701,
+      "sha256": "6c3d89ee4c73fcdea4f6533e450fabef2a81d81043d8b40a1bae6cc069d132ef"
+    },
+    {
+      "path": "assets/office-v26.css",
+      "bytes": 9304,
+      "sha256": "1f45c0d96ad07adab70c378bf602bf1d8ea2509d4bc854962169dace674fd4b1"
+    },
+    {
+      "path": "assets/office-v26.js",
+      "bytes": 23114,
+      "sha256": "8c8ddccd34ff115aa6c84119e267f5ed9a256c01727695bfacb64d0c0ce98ffa"
+    },
+    {
+      "path": "docs/QA-REPORT.json",
+      "bytes": 1090,
+      "sha256": "ec43a60ede90a95499c302ad905158aa06f599182bfe0059e06756c822c5a98d"
+    },
+    {
+      "path": "index.html",
+      "bytes": 1271934,
+      "sha256": "d0ef6f468dedb86c3dcc088dc9b5b46c0288f1b17c06c075584e39ac0e8945a0"
+    },
+    {
+      "path": "lib/auth.js",
+      "bytes": 3287,
+      "sha256": "fe6f941380582010372974025562a06942e603e3dceb2ff22ed96cd6587daec3"
+    },
+    {
+      "path": "lib/balqees-db.js",
+      "bytes": 43657,
+      "sha256": "909e44e177fae592ef67b93a294bee7dc927f400f2772b736800edc4ac8eee71"
+    },
+    {
+      "path": "lib/google.js",
+      "bytes": 8136,
+      "sha256": "73e830a52d21fecb581325fa64793b8c73a58ace879bbddcd35bb4053e383e71"
+    },
+    {
+      "path": "lib/office-search.js",
+      "bytes": 2746,
+      "sha256": "425ddb4cea07a2893b03e6998b70413ac1e6801f4f44e42ad6907f52315f53cf"
+    },
+    {
+      "path": "lib/portal-domain.js",
+      "bytes": 5182,
+      "sha256": "b86a82c880051163f6bcf25ad2438f2d2596b5d0662843742cf246606a85e9f6"
+    },
+    {
+      "path": "lib/portal-service.js",
+      "bytes": 7674,
+      "sha256": "5e6ffbeef6c222bb3b0689bd6091f870b559c852f67867cf38a9134ba17f9fe0"
+    },
+    {
+      "path": "lib/portal-store.js",
+      "bytes": 5184,
+      "sha256": "c7592163d9a28d7d3658976c761b888b7973a9e45bf9638d30772b47e7b13398"
+    },
+    {
+      "path": "package.json",
+      "bytes": 154,
+      "sha256": "b3a48c1012a4c688509b33dde62c70025904aa882466de9c11891394063bd6e7"
+    },
+    {
+      "path": "portal-ui/assets/office-portal-CKUVVaTq.js",
+      "bytes": 254113,
+      "sha256": "98bf174f06c7cf15cd06e5d66c307a0b8be0a327065446b8ed32b713f50c5945"
+    },
+    {
+      "path": "portal-ui/assets/office-portal-DK9TSIu-.css",
+      "bytes": 11267,
+      "sha256": "90aea53e4850c3d4110e14b4efe1e532166a4bb708777d60a7c225349a1c5ad7"
+    },
+    {
+      "path": "portal-ui/office-portal.html",
+      "bytes": 503,
+      "sha256": "0e6c880d19d31005f4e8095cad26c653c29cc56f2945edfbafab1bab4d23afca"
+    },
+    {
+      "path": "tests/office-v26.test.mjs",
+      "bytes": 6624,
+      "sha256": "b157dcf0390ea15a2aed9f9ec9447218293722e70797fa64a1ddd4fd23b0abe1"
+    },
+    {
+      "path": "vercel.json",
+      "bytes": 509,
+      "sha256": "34e701dd258967caf76965e99a3f88e3ed733591a2644dac8f7b92eb89a4929f"
+    }
+  ]
+}

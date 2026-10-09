@@ -1,7 +1,7 @@
 
 import { verifySession } from '../lib/auth.js';
 import {
-  getInitialData, health, getBootstrap, getLookups, refreshDashboard, listEntity,
+  getInitialData, health, getBootstrap, getLookups, refreshDashboard, listEntity, searchRecords,
   saveRecord, deleteRecord, saveCompanySettings, getWeeklyReport, getReport, createBackup
 } from '../lib/balqees-db.js';
 
@@ -26,6 +26,7 @@ export default async function handler(req, res) {
       case 'getLookups': data=await getLookups(); break;
       case 'refreshDashboard': data=await refreshDashboard(); break;
       case 'listEntity': data=await listEntity(args[0],args[1]||{}); break;
+      case 'searchRecords': data=await searchRecords(args[0]||{}); break;
       case 'saveRecord': data=await saveRecord(user.email,args[0],args[1]||{}); break;
       case 'deleteRecord': data=await deleteRecord(user.email,args[0],args[1],args[2]); break;
       case 'saveCompanySettings': data=await saveCompanySettings(user.email,args[0]||{}); break;

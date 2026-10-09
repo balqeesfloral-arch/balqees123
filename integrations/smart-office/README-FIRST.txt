@@ -1,13 +1,17 @@
-Balqees Smart Office Cloud 8.6.1 — Hotfix
-PDF design remains v27.4.22
+مكتب بلقيس الذكي — v26.2.4
+تاريخ الإصدار: 2026-10-09
+قالب كشف الحساب/PDF المحفوظ: v27.4.22
 
-Fix:
-- Resolved: ReferenceError: stmtTexts is not defined
-- Root cause: bilingual/PDF helper functions were scoped inside pdfDateTimeEN.
-- stmtTexts, stmtLang, stmtDir, stmtAlign and statement helpers are now global and available to Reports.
-- No database, Google Sheets, Drive, login, receivables or payment logic was changed.
-- Logo, watermark, signature, stamp and bilingual v27.4.22 PDF remain unchanged.
+ابدأ بقراءة README-AR.md.
+الحزمة تشمل واجهة المكتب وAPI الخادم وربط حسابات العملاء بالموقع.
 
-Upload this ZIP to the same balqees-smart-office Vercel project and wait for Ready.
+لترقية المشروع القائم، ضع محتويات الحزمة كاملة في:
+integrations/smart-office
+داخل المستودع balqeesfloral-arch/balqees123.
+انشرها على مشروع المكتب القائم بنفس إعدادات Google وSheets وDrive وSupabase.
+Framework: Other | Root Directory: integrations/smart-office | Output Directory: .
+عند استخدام مجلد الحزمة كمصدر مستقل، يكون Root Directory جذر ذلك المجلد.
+شاشة الربط المجمعة موجودة بالفعل في portal-ui.
 
-8.6.2: Customer account integration. See ACCOUNTING-INTEGRATION-v10.49.md in the repository root before deployment.
+اختبارات منطق الإصدار: npm test
+تقرير التحقق: docs/QA-REPORT.json

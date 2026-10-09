@@ -1,12 +1,13 @@
 
 import crypto from 'node:crypto';
+import { searchOfficeRows, prepareSearch } from './office-search.js';
 import { PortalError, strictClientRows, verifyTransfer, possibleDuplicateTransfer } from './portal-domain.js';
 import {
   batchGetSheets, getSheetValues, updateRow, appendRow, batchUpdateRows,
   createDriveFolder, uploadDriveFile, copyDriveFile
 } from './google.js';
 
-export const APP_VERSION = '8.6.2';
+export const APP_VERSION = '26.2.4';
 const DB_ID = process.env.BALQEES_SPREADSHEET_ID || '';
 const TZ = 'Asia/Riyadh';
 
@@ -361,6 +362,27 @@ export async function listEntity(entity, options={}) {
   rows.sort((a,b)=>String(b.updated_at||b.created_at||b.date||'').localeCompare(String(a.updated_at||a.created_at||a.date||'')));
   const limit=Math.max(1,Math.min(Number(options.limit||500),1000));
   return rows.slice(0,limit).map(stripMeta);
+}
+
+// One read request covers every sheet, including records beyond listEntity's display limit.
+export async function searchRecords(options={}) {
+  const query = prepareSearch(options);
+  if (!query.terms.length) return {items:[],matched:0,scanned:0,limit:query.limit};
+  const all = await batchGetSheets(Object.values(ENTITY).map(cfg=>cfg.sheet));
+  const rows = Object.fromEntries(Object.entries(ENTITY).map(([entity,cfg])=>[entity,rowsFromValues(all[cfg.sheet])]));
+  const clientNames = new Map(rows.clients.map(r=>[String(r.id),r.name]));
+  const supplierNames = new Map(rows.suppliers.map(r=>[String(r.id),r.name]));
+  const projectNames = new Map(rows.projects.map(r=>[String(r.id),r.name]));
+  for (const list of Object.values(rows)) {
+    for (const row of list) {
+      if (row.client_id && clientNames.has(String(row.client_id))) row.client_name=clientNames.get(String(row.client_id));
+      if (row.supplier_id && supplierNames.has(String(row.supplier_id))) row.supplier_name=supplierNames.get(String(row.supplier_id));
+      if (row.project_id && projectNames.has(String(row.project_id))) row.project_name=projectNames.get(String(row.project_id));
+      if (row.party_type==='عميل' && clientNames.has(String(row.party_id))) row.party_name=clientNames.get(String(row.party_id));
+      if (row.party_type==='مورد' && supplierNames.has(String(row.party_id))) row.party_name=supplierNames.get(String(row.party_id));
+    }
+  }
+  return searchOfficeRows(rows,query);
 }
 
 export async function saveRecord(userEmail, entity, payload={}) {

@@ -1,0 +1,44 @@
+{
+  "version": "26.2.4",
+  "passed": true,
+  "widths": [
+    1440,
+    768,
+    390,
+    320
+  ],
+  "checks": [
+    "authenticated startup",
+    "global Arabic/digit search",
+    "old record opening with current version",
+    "literal untrusted titles",
+    "search failure retry",
+    "numeric ascending/descending sorting",
+    "status and text filters",
+    "visible-only CSV export",
+    "formula protection",
+    "existing record creation",
+    "persistent UI density only",
+    "original statement graphics",
+    "mobile drawer focus/inert",
+    "mobile search/form bounds",
+    "no overall horizontal overflow",
+    "expired search session",
+    "signed-out data gate",
+    "zero unhandled page errors"
+  ],
+  "saveRequests": 1,
+  "date": "2026-10-09T12:19:26.747Z",
+  "unitTests": {
+    "passed": 7,
+    "failed": 0,
+    "command": "npm test"
+  },
+  "originalInlineSha256": "9a55b769fe4b56ab34bb7e7c548c3a5286d93afd92afb95194632885017bb655",
+  "originalPdfVersion": "v27.4.22",
+  "baselineRegressionTests": {
+    "passed": 32,
+    "failed": 0
+  },
+  "protectedFilesUnchanged": 13
+}
