@@ -1,0 +1,93 @@
+{
+  "passed": true,
+  "date": "2026-10-12T09:16:15.172Z",
+  "widths": [
+    1440,
+    768,
+    390,
+    320
+  ],
+  "linesSaved": 2,
+  "appends": 1,
+  "saveRequests": 1,
+  "printedModes": [
+    "ar",
+    "en",
+    "both"
+  ],
+  "printPages": {
+    "ar": 1,
+    "en": 1,
+    "both": 1,
+    "multipage": 5
+  },
+  "embeddedFontsVerified": true,
+  "logoSignatureStampVerified": true,
+  "followupFieldsVerified": true,
+  "multipageLines": 24,
+  "pageErrors": [],
+  "quotationEdition": "10.2.5",
+  "officeApplication": "26.3.0",
+  "websiteVersion": "10.50.0",
+  "unitTests": {
+    "website": 49,
+    "office": 18,
+    "failed": 0
+  },
+  "browserChecks": [
+    "product and service lines in the same quotation",
+    "per-line discount and mixed VAT",
+    "Arabic decimal input and exact totals",
+    "one append after lost save confirmation",
+    "fresh saved quotation edit with both lines",
+    "legacy attachment preservation",
+    "follow-up date and probability retained internally",
+    "Arabic, English and bilingual print modes",
+    "decoded original logo, signature and stamp",
+    "loaded Noto Naskh Arabic and DM Sans fonts",
+    "1440/768/390/320 editor and mobile list bounds",
+    "existing non-quote Office section delegates to previous UI",
+    "zero unhandled browser errors",
+    "accounting and comprehensive website-link regression workflows"
+  ],
+  "visualReview": {
+    "allPagesInspected": true,
+    "shortFixtureLines": 2,
+    "shortFixtureTotalSAR": 257,
+    "shortFixturePages": {
+      "ar": 1,
+      "en": 1,
+      "both": 1
+    },
+    "longFixturePages": 5,
+    "tableHeadersRepeatOnPages": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "longFixtureLines": 24,
+    "longFixtureTotalSAR": 3084,
+    "noClippingObserved": true
+  },
+  "storageVerification": {
+    "mockGoogle": true,
+    "newColumns": 1,
+    "canonicalTotalsRecalculated": true,
+    "driveUploadsForQuotationCreation": 0,
+    "staleVersionRejected": true,
+    "duplicateRetryReconciled": true,
+    "unrelatedRowsAndAttachmentsPreserved": true
+  },
+  "buildPassed": true,
+  "sourceVerificationPassed": true,
+  "testIsolation": "All browser APIs and Google Sheets writes are fixtures; no live customer records or outbound messages.",
+  "translation": "Professional bilingual templates and labels. Custom English names, descriptions, conditions and notes require entry and review. No automatic translation claim.",
+  "originalInlineSha256": "9a55b769fe4b56ab34bb7e7c548c3a5286d93afd92afb95194632885017bb655",
+  "originalStatementPdfVersion": "v27.4.22",
+  "limitations": [
+    "Structured quotations are not automatically published to the website customer account.",
+    "Existing Drive attachment ownership and service-account storage requirements remain unchanged.",
+    "Google Sheets does not provide an atomic compare-and-swap transaction; simultaneous edits require operator coordination."
+  ]
+}

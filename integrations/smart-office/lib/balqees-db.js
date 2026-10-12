@@ -1,10 +1,11 @@
 
 import crypto from 'node:crypto';
 import { searchOfficeRows, prepareSearch } from './office-search.js';
+import { normalizeQuotation, QuoteError, decimal } from '../assets/quotation-model.js';
 import { PortalError, strictClientRows, verifyTransfer, possibleDuplicateTransfer, validateAttachment } from './portal-domain.js';
 import {
   batchGetSheets, getSheetValues, updateRow, appendRow, batchUpdateRows,
-  createDriveFolder, uploadDriveFile, copyDriveFile, readDriveAttachment
+  createDriveFolder, uploadDriveFile, copyDriveFile, readDriveAttachment, ensureColumnCapacity
 } from './google.js';
 
 export const APP_VERSION = '26.3.0';
@@ -391,18 +392,50 @@ export async function saveRecord(userEmail, entity, payload={}) {
   if(entity==='purchases'||entity==='expenses') sheetNames.push('الحساب الشخصي');
   const all=await batchGetSheets([...new Set(sheetNames)]);
   const settings=settingsFromValues(all['الإعدادات']);
-  const targetHeaders=headersFromValues(all[cfg.sheet]);
+  let targetHeaders=headersFromValues(all[cfg.sheet]);
   const targetRows=rowsFromValues(all[cfg.sheet],true);
   const clients=rowsFromValues(all['العملاء']);
   const suppliers=rowsFromValues(all['الموردون']);
   const projects=rowsFromValues(all['المشاريع']);
   const seq=new SequenceManager(all['التسلسلات']);
 
+  const detailed=entity==='quotes'&&Object.hasOwn(payload,'quote_details');
+  let quoteDocument,requestId;
+  if(detailed) {
+    requestId=String(payload.quotation_request_id||'');
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))throw new QuoteError('مرجع حفظ العرض غير صالح.');
+    quoteDocument=normalizeQuotation(payload.quote_details,payload.status||'مسودة');
+    quoteDocument.request_id=requestId;
+    if(!clients.some(c=>String(c.id)===String(payload.client_id)))throw new QuoteError('اختر عميلًا موجودًا في المكتب.');
+    if(payload.project_id&&!projects.some(p=>String(p.id)===String(payload.project_id)&&String(p.client_id)===String(payload.client_id)))throw new QuoteError('المشروع لا يتبع العميل المختار.');
+    const recordId=payload.id||requestId,previous=targetRows.filter(r=>String(r.id)===recordId);
+    if(previous.length>1)throw new QuoteError('مرجع العرض مكرر. راجع السجلات الموجودة قبل المتابعة.','QUOTE_CONFLICT');
+    const followupDate=payload.followup_date??previous[0]?.followup_date??'';
+    if(followupDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(followupDate)||!Number.isFinite(Date.parse(followupDate))||new Date(followupDate).toISOString().slice(0,10)!==followupDate))throw new QuoteError('راجع موعد متابعة العرض.');
+    const rawProbability=payload.probability??previous[0]?.probability??0;
+    const probability=decimal(String(rawProbability).trim()===''?0:rawProbability)/100;
+    if(probability>100)throw new QuoteError('احتمالية الإغلاق يجب أن تكون بين 0 و100%.');
+    if(previous[0]?.quote_details_json) {
+      let old;try{old=JSON.parse(previous[0].quote_details_json);}catch{throw new QuoteError('تفاصيل العرض الموجودة غير قابلة للقراءة.','QUOTE_CONFLICT');}
+      if(old.request_id===requestId) {
+        if(previous[0].deleted_at||JSON.stringify(old)!==JSON.stringify(quoteDocument)||String(previous[0].client_id)!==String(payload.client_id)||String(previous[0].project_id||'')!==String(payload.project_id||'')||previous[0].status!==(payload.status||'مسودة')||String(previous[0].followup_date||'')!==followupDate||Number(previous[0].probability||0)!==probability)throw new QuoteError('مرجع الحفظ مستخدم لبيانات مختلفة.','QUOTE_CONFLICT');
+        return {ok:true,record:stripMeta(previous[0]),reconciled:true};
+      }
+    }
+    if(!payload.id&&previous.length)throw new QuoteError('يوجد سجل بنفس مرجع الإنشاء. راجع العرض الموجود.','QUOTE_CONFLICT');
+    payload={id:payload.id,version:payload.version,client_id:payload.client_id,project_id:payload.project_id||'',status:payload.status||'مسودة',
+      date:quoteDocument.date,valid_until:quoteDocument.valid_until,description:quoteDocument.lines.map(l=>`${l.name_ar||l.name_en} × ${l.quantity}`).join('\n').slice(0,4000),
+      notes:quoteDocument.notes_ar||quoteDocument.notes_en,quote_details_json:JSON.stringify(quoteDocument),followup_date:followupDate,probability};
+  }
+
   const isNew=!payload.id;
   let existing={}, rec, rowNum=-1;
   if(!isNew){
     existing=targetRows.find(r=>String(r.id)===String(payload.id));
     if(!existing) throw new Error('السجل غير موجود أو تم حذفه.');
+    if(entity==='quotes'&&existing.deleted_at)throw new QuoteError('العرض محذوف ولا يمكن تعديله.','QUOTE_CONFLICT');
+    if(detailed&&(payload.version===undefined||Number(payload.version)!==Number(existing.version||0)))throw new QuoteError('تغيّر العرض من نافذة أخرى. حمّل أحدث نسخة قبل الحفظ.','QUOTE_CONFLICT');
+    if(entity==='quotes'&&existing.quote_details_json&&!detailed)throw new QuoteError('هذا عرض تفصيلي. حدّث صفحة المكتب واستخدم محرر عروض الأسعار الجديد.','QUOTE_CONFLICT');
     rowNum=existing.__row;
     const sentVersion=Number(payload.version||0), currentVersion=Number(existing.version||0);
     if(sentVersion&&currentVersion&&sentVersion!==currentVersion) throw new Error('تم تعديل السجل من جهاز آخر. حدّث الصفحة ثم أعد المحاولة.');
@@ -412,10 +445,15 @@ export async function saveRecord(userEmail, entity, payload={}) {
   delete rec.attachment;
   delete rec.__row;
   normalizeBusinessFields(entity,rec,settings);
+  if(detailed) {
+    rec.subtotal=quoteDocument.totals.net;rec.vat_amount=quoteDocument.totals.vat;rec.total=quoteDocument.totals.total;
+    rec.vat_rate=rec.subtotal?round2(rec.vat_amount/rec.subtotal*100):0;
+  }
 
   if(isNew){
-    rec.id=crypto.randomUUID();
-    rec[cfg.number]=seq.next(cfg.seq);
+    rec.id=detailed?requestId:crypto.randomUUID();
+    rec[cfg.number]=detailed?`BQ-${quoteDocument.date.slice(0,4)}-${requestId.replaceAll('-','').slice(0,12).toUpperCase()}`:seq.next(cfg.seq);
+    if(detailed&&targetRows.some(r=>r.quote_no===rec.quote_no))throw new QuoteError('رقم العرض موجود بالفعل. افتح العرض الموجود قبل المتابعة.','QUOTE_CONFLICT');
     rec.created_at=now();
     rec.version=1;
     rec.deleted_at='';
@@ -442,6 +480,15 @@ export async function saveRecord(userEmail, entity, payload={}) {
     });
   }
 
+  if(detailed&&!targetHeaders.includes('quote_details_json')) {
+    // Add one field to this sheet only. Existing rows, IDs and ledger fields
+    // are retained; rendering and client reports keep their original schema.
+    const latest=headersFromValues(await getSheetValues(cfg.sheet));
+    if(latest.join('\u0000')!==targetHeaders.join('\u0000'))throw new QuoteError('تغيرت أعمدة سجل العروض. حدّث الصفحة قبل الحفظ.','QUOTE_CONFLICT');
+    targetHeaders=[...targetHeaders,'quote_details_json'];
+    await ensureColumnCapacity(cfg.sheet,targetHeaders.length);
+    await updateRow(cfg.sheet,1,targetHeaders);
+  }
   if(isNew) await appendRow(cfg.sheet,rowValues(targetHeaders,rec));
   else await updateRow(cfg.sheet,rowNum,rowValues(targetHeaders,rec));
 
@@ -476,6 +523,18 @@ export async function saveRecord(userEmail, entity, payload={}) {
   await seq.flush();
   await audit(userEmail,isNew?'create':'update',entity,rec.id,`${rec[cfg.number]||''} ${summaryName(entity,rec)}`,rec);
   return {ok:true,record:stripMeta(rec)};
+}
+
+export async function getQuotationData(id='') {
+  const sheets=['العملاء','المشاريع','الإعدادات',...(id?['عروض الأسعار']:[])];
+  const all=await batchGetSheets(sheets),settings=settingsFromValues(all['الإعدادات']);
+  const pick=(row,keys)=>Object.fromEntries(keys.map(k=>[k,row[k]??'']));
+  const clients=rowsFromValues(all['العملاء']).map(r=>pick(r,['id','client_no','name','contact_name','phone','email','vat_no','city','address']));
+  const projects=rowsFromValues(all['المشاريع']).map(r=>pick(r,['id','project_no','name','client_id']));
+  const records=id?rowsFromValues(all['عروض الأسعار']).filter(r=>String(r.id)===String(id)):[];
+  if(records.length>1)throw new QuoteError('مرجع العرض مكرر في المكتب.','QUOTE_CONFLICT');
+  const record=records[0]?stripMeta(records[0]):null;
+  return {record,clients,projects,company:pick(settings,['company_name','company_name_en','city','phone1','phone2','email1','email2','website','vat_no','unified_no','cr_no','address'])};
 }
 
 export async function deleteRecord(userEmail,entity,id,version) {

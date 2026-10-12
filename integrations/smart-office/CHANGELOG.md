@@ -1,3 +1,13 @@
+# Quotation Studio v10.2.5 — 2026-10-12
+
+Rebuilt the Office quotations page as a restrained olive-and-gold professional workspace. The editor supports up to 50 independent product/service lines, bilingual specifications and units, fractional quantities, per-line discounts and VAT, VAT-inclusive/exclusive pricing, validity, conditions and notes. Follow-up dates and closing probabilities remain internal.
+
+Added formal A4 Arabic, English and bilingual quotation printing with the existing high-resolution Balqees logo, signature and seal, local licensed fonts, repeating table headings and page numbers. Custom English content requires review rather than an unverified automatic translation. This is a commercial quotation, not a tax invoice or proof of payment.
+
+Structured quotations use one new `quote_details_json` column in the existing Google quotation sheet, added on the first successful detailed save. The server validates input and recalculates money in integer cents. Stable request IDs support recovery after a lost response; the browser reconciles an uncertain save instead of appending another quotation. Version checks reject stale edits. Existing attachments and unrelated records are preserved. Creating/printing a structured quote no longer requires a Drive upload; existing Drive attachment ownership/quota requirements have not changed.
+
+Quotation edition: 10.2.5. Office application: 26.3.0. Website: 10.50.0. The original statement/PDF v27.4.22 and inline application remain byte-identical. Verification details are in `docs/QUOTATION-QA-v10.2.5.json`.
+
 # v26.3.0 — 2026-10-09
 
 Added a shared website/Office operations inbox for store orders, RFQs, organization service requests, published B2B quotations and contracts. Lists are paginated; detail views read current protected website data. Import approved operational snapshots into the matching Google client, project, quotation or contract without creating tax invoices or marking balances paid.

@@ -138,6 +138,16 @@ export async function updateRow(sheetName, rowNumber, values) {
   );
 }
 
+export async function ensureColumnCapacity(sheetName,columnCount) {
+  if(!Number.isInteger(columnCount)||columnCount<1||columnCount>702)throw new Error('Sheet column count invalid');
+  const id=sheetId(),metadata=await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=sheets(properties(sheetId,title,gridProperties))`);
+  const properties=metadata.sheets?.find(s=>s.properties.title===sheetName)?.properties;
+  if(!properties)throw new Error('Quotation sheet unavailable');
+  const current=Number(properties.gridProperties?.columnCount||0);
+  if(current<columnCount)await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requests:[{appendDimension:{sheetId:properties.sheetId,dimension:'COLUMNS',length:columnCount-current}}]})});
+}
+
 export async function appendRow(sheetName, values) {
   const id = sheetId();
   const range = qRange(sheetName, 'A:ZZ');

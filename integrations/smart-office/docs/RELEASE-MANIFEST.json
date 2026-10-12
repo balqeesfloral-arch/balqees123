@@ -1,8 +1,9 @@
 {
   "application": "Balqees Smart Office",
   "version": "26.3.0",
+  "quotationEdition": "10.2.5",
   "pdfVersion": "v27.4.22",
-  "baseCommit": "9b8e24ced4b0128cb2ccd6a51cb214a55db873c3",
+  "baseCommit": "a8b75639e39f49de98696c1e7656dbf374c78cd2",
   "originalInlineSha256": "9a55b769fe4b56ab34bb7e7c548c3a5286d93afd92afb95194632885017bb655",
   "files": [
     {
@@ -12,8 +13,8 @@
     },
     {
       "path": "api/balqees.js",
-      "bytes": 2180,
-      "sha256": "11ed9ac185b011aa869b96ab905ec9cec37f5dab712ccab85972ed346d9e559e"
+      "bytes": 2425,
+      "sha256": "089a920899b51c9cdec43b9834b2cb1715d7dcbdb1c47c22fc08d8ebfc973651"
     },
     {
       "path": "api/config.js",
@@ -51,19 +52,74 @@
       "sha256": "92f7965f902bc122644f75579f1046ad09506db661f73758b97cf405b52519c0"
     },
     {
+      "path": "assets/quotation-model.js",
+      "bytes": 12869,
+      "sha256": "f256de562097062e410b831595660c59b43ab2f6a903d701bf9122fc153e1452"
+    },
+    {
+      "path": "assets/quotation-print.js",
+      "bytes": 19429,
+      "sha256": "2ea5ef4c109376a3995633dd18bbf03c3a482d2dfd50f2107d519d4d846e1b3e"
+    },
+    {
+      "path": "assets/quotation-studio.css",
+      "bytes": 13120,
+      "sha256": "840d71549fc92a144bfe08a7089c697a18424cc9d584fc96e1fde2f2fb7da3ee"
+    },
+    {
+      "path": "assets/quotation-studio.js",
+      "bytes": 32240,
+      "sha256": "ee6bd1415bea743689b0740e5134521ebf8198a14858289eab3af133ecef4f6c"
+    },
+    {
+      "path": "assets/quote-fonts/dm-license.txt",
+      "bytes": 4389,
+      "sha256": "2af94f4fb533be8fa23282eb33e08ca311ddf47c2f32777e2040b282deeec65c"
+    },
+    {
+      "path": "assets/quote-fonts/dm-regular.ttf",
+      "bytes": 48280,
+      "sha256": "b0ae3e89a7d3ef2b1838bb4b1ceb0b17cc3435af061eee809d76aa623ff116e9"
+    },
+    {
+      "path": "assets/quote-fonts/dm-semibold.ttf",
+      "bytes": 48280,
+      "sha256": "b79a2ea7a38f33fd96a282fadb9ce97626bb0724a44d21075859f0e50239993a"
+    },
+    {
+      "path": "assets/quote-fonts/naskh-bold.ttf",
+      "bytes": 197532,
+      "sha256": "76e7b3b17abc5068fda755d657d475863df2d48cee60dc21bd22efb11ecb2268"
+    },
+    {
+      "path": "assets/quote-fonts/naskh-license.txt",
+      "bytes": 4382,
+      "sha256": "a7a5a25eb188bf1cd96982030d53e23c33485c69b1044a562254226857ee13af"
+    },
+    {
+      "path": "assets/quote-fonts/naskh-regular.ttf",
+      "bytes": 197420,
+      "sha256": "e62e84cf72fe9e8953a21c3337c68155a116d4bbdcd9522d860d46686b28c6e0"
+    },
+    {
       "path": "CHANGELOG.md",
-      "bytes": 2773,
-      "sha256": "4a40573de9e32a0e3f19d99d2d045be17dc4d781d11fdab0ab85e9ba9e6b78cb"
+      "bytes": 4352,
+      "sha256": "be467483fbc301aa07ceca48f0bea13b4b405fff18fdc0d574e51cecd04ee3b9"
     },
     {
       "path": "docs/QA-REPORT.json",
-      "bytes": 2692,
-      "sha256": "644e7b766e90f97c377efe9977d98caae51644a09f9f55183066d3935e6da89a"
+      "bytes": 3742,
+      "sha256": "72687f53238644bd9e9da552e431dec31846ed9c328330e7c9d9e79c23cffeaa"
+    },
+    {
+      "path": "docs/QUOTATION-QA-v10.2.5.json",
+      "bytes": 2887,
+      "sha256": "3643bfc19a168394a6a2b46189bc680c1373d3645b04fddac2df3fa17031fe76"
     },
     {
       "path": "index.html",
-      "bytes": 1271934,
-      "sha256": "ff44f1e834dbb350ae1fabe3edf5f7a3c0987363dd3878c9f0924234ba6ac003"
+      "bytes": 1272061,
+      "sha256": "5fbee6c15739cb75413cabe371da51b144081195141a8506dd98e3d6fca63e43"
     },
     {
       "path": "lib/auth.js",
@@ -72,13 +128,13 @@
     },
     {
       "path": "lib/balqees-db.js",
-      "bytes": 48536,
-      "sha256": "bbad463db5d2f121fe0724425981ae23ea20a1726fddaf5fc5e470b596b6057f"
+      "bytes": 54691,
+      "sha256": "437fb46e360ad8a3c4adbbb0043ea76b4d5ab3d3dca83bc6ebca3ce3b4a0413e"
     },
     {
       "path": "lib/google.js",
-      "bytes": 9457,
-      "sha256": "558ba32652508ad4f0d3f6a2a957eb9f13c85f2bc92aff3207a5240719f5a027"
+      "bytes": 10368,
+      "sha256": "c25d009d4aeb3760b74108fa408f4db8709cdb83f7232310ef53a7c156d49ebb"
     },
     {
       "path": "lib/office-link-domain.js",
@@ -132,8 +188,8 @@
     },
     {
       "path": "README-AR.md",
-      "bytes": 8912,
-      "sha256": "6d26876dd149bfebfbb6e59a2c643e81abc40f1693e1e28854f207635492d388"
+      "bytes": 12679,
+      "sha256": "83e3f0e3bb60d089c9c938d7e618a4bb4825264aed7be1cd8dd81ac83445fa64"
     },
     {
       "path": "README-FIRST.txt",
@@ -144,6 +200,11 @@
       "path": "tests/office-v26.test.mjs",
       "bytes": 6624,
       "sha256": "250f5fba7e200a55b030f46f334be9f9837008bbb2e38070703d2bd8efa192d7"
+    },
+    {
+      "path": "tests/quotation.test.mjs",
+      "bytes": 10757,
+      "sha256": "56cb4ac8059d9bf65e2b91d4dcf9438b2a65ba58c57622672e6517efeba04ece"
     },
     {
       "path": "vercel.json",

@@ -1,14 +1,16 @@
 {
   "version": "26.3.0",
+  "quotationEdition": "10.2.5",
   "websiteVersion": "10.50.0",
   "passed": true,
-  "date": "2026-10-09T15:45:00.160Z",
+  "date": "2026-10-12T09:16:15.172Z",
   "unitTests": {
     "website": 49,
-    "office": 7,
+    "office": 18,
     "failed": 0
   },
   "widths": [
+    1440,
     1360,
     768,
     390,
@@ -26,23 +28,42 @@
     "new customer creation and mapping",
     "Arabic RTL and no horizontal overflow",
     "no unhandled browser errors",
-    "existing customer financial center and payment proof submission"
+    "existing customer financial center and payment proof submission",
+    "product and service lines in the same quotation",
+    "per-line discount and mixed VAT",
+    "Arabic decimal input and exact totals",
+    "one append after lost save confirmation",
+    "fresh saved quotation edit with both lines",
+    "legacy attachment preservation",
+    "follow-up date and probability retained internally",
+    "Arabic, English and bilingual print modes",
+    "decoded original logo, signature and stamp",
+    "loaded Noto Naskh Arabic and DM Sans fonts",
+    "1440/768/390/320 editor and mobile list bounds",
+    "existing non-quote Office section delegates to previous UI",
+    "zero unhandled browser errors",
+    "accounting and comprehensive website-link regression workflows"
   ],
-  "databaseChecks": [
-    "durable claims and immutable mappings",
-    "RFQ pricing, notifications and optimistic concurrency",
-    "B2B VAT, publishing and duplicate prevention",
-    "exact-account order payment and no proof reuse",
-    "customer RPC denial and forged metadata denial",
-    "fresh revoked-admin rejection"
-  ],
-  "regressionSQL": {
-    "accounting": 10,
-    "quotationRequests": 9,
-    "whatsappHandoff": 6,
-    "allPassed": true
+  "previousDatabaseVerification": {
+    "date": "2026-10-09T15:45:00.160Z",
+    "checks": [
+      "durable claims and immutable mappings",
+      "RFQ pricing, notifications and optimistic concurrency",
+      "B2B VAT, publishing and duplicate prevention",
+      "exact-account order payment and no proof reuse",
+      "customer RPC denial and forged metadata denial",
+      "fresh revoked-admin rejection"
+    ],
+    "regressionSQL": {
+      "accounting": 10,
+      "quotationRequests": 9,
+      "whatsappHandoff": 6,
+      "allPassed": true
+    }
   },
-  "testIsolation": "Browser and Google calls use local fixtures; SQL transactions roll back all test users, notifications and records.",
+  "databaseChangesThisEdition": false,
+  "testIsolation": "All quotation, accounting and website-link browser/API checks use local fixtures. No live customer writes or outbound messages. Database verification belongs to the dated prior release, not this quotation edition.",
+  "quotationVerification": "docs/QUOTATION-QA-v10.2.5.json",
   "originalInlineSha256": "9a55b769fe4b56ab34bb7e7c548c3a5286d93afd92afb95194632885017bb655",
   "originalPdfVersion": "v27.4.22",
   "previousOfficeUiVerification": {

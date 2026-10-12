@@ -2,10 +2,11 @@
 import { verifySession } from '../lib/auth.js';
 import {
   getInitialData, health, getBootstrap, getLookups, refreshDashboard, listEntity, searchRecords,
-  saveRecord, deleteRecord, saveCompanySettings, getWeeklyReport, getReport, createBackup
+  saveRecord, deleteRecord, saveCompanySettings, getWeeklyReport, getReport, createBackup, getQuotationData
 } from '../lib/balqees-db.js';
+import { QuoteError } from '../assets/quotation-model.js';
 
-export const config = { maxDuration: 30 };
+export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -27,6 +28,7 @@ export default async function handler(req, res) {
       case 'refreshDashboard': data=await refreshDashboard(); break;
       case 'listEntity': data=await listEntity(args[0],args[1]||{}); break;
       case 'searchRecords': data=await searchRecords(args[0]||{}); break;
+      case 'getQuotationData': data=await getQuotationData(args[0]||''); break;
       case 'saveRecord': data=await saveRecord(user.email,args[0],args[1]||{}); break;
       case 'deleteRecord': data=await deleteRecord(user.email,args[0],args[1],args[2]); break;
       case 'saveCompanySettings': data=await saveCompanySettings(user.email,args[0]||{}); break;
@@ -38,6 +40,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ok:true,data});
   } catch (e) {
     console.error('Balqees API', e);
-    return res.status(500).json({ok:false,error:e&&e.message?e.message:'حدث خطأ في قاعدة البيانات.'});
+    return res.status(e instanceof QuoteError?(e.code==='QUOTE_CONFLICT'?409:400):500).json({ok:false,code:e.code||'OFFICE_ERROR',error:e&&e.message?e.message:'حدث خطأ في قاعدة البيانات.'});
   }
 }
