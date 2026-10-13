@@ -1,12 +1,13 @@
 {
   "version": "26.3.0",
   "quotationEdition": "10.2.5",
+  "letterEdition": "10.2.3",
   "websiteVersion": "10.50.0",
   "passed": true,
-  "date": "2026-10-12T09:16:15.172Z",
+  "date": "2026-10-13T11:55:07.555Z",
   "unitTests": {
     "website": 49,
-    "office": 18,
+    "office": 24,
     "failed": 0
   },
   "widths": [
@@ -42,7 +43,23 @@
     "1440/768/390/320 editor and mobile list bounds",
     "existing non-quote Office section delegates to previous UI",
     "zero unhandled browser errors",
-    "accounting and comprehensive website-link regression workflows"
+    "accounting and comprehensive website-link regression workflows",
+    "direct letter composition without file upload",
+    "client/project linking and custom recipients",
+    "four reviewed bilingual hotel templates",
+    "live paper preview inside bounds at 1440/768/390/320px",
+    "save confirmation lost then one append reconciled",
+    "current saved letter editing with version preservation",
+    "internal notes excluded from every print mode",
+    "three-paragraph Arabic/English/bilingual letters each fit one A4 page",
+    "decoded original high-resolution logo, signature and seal",
+    "loaded local Noto Naskh Arabic and DM Sans fonts",
+    "legacy letter text and existing attachment retained",
+    "18-paragraph bilingual long letter with complete paired paragraphs and numbered reference footers",
+    "quotation and customer sections still accessible",
+    "quotation studio browser regression passed",
+    "accounting and comprehensive website-link regressions passed",
+    "Print waits for the selected-language document, fonts and brand images to finish loading"
   ],
   "previousDatabaseVerification": {
     "date": "2026-10-09T15:45:00.160Z",
@@ -61,9 +78,11 @@
       "allPassed": true
     }
   },
-  "databaseChangesThisEdition": false,
-  "testIsolation": "All quotation, accounting and website-link browser/API checks use local fixtures. No live customer writes or outbound messages. Database verification belongs to the dated prior release, not this quotation edition.",
+  "supabaseChangesThisEdition": false,
+  "googleSheetsSchemaChange": "Adds one letter_details_json column to the existing letters sheet on first composed save.",
+  "testIsolation": "All letter, quotation, accounting and website-link browser/API checks use local fixtures. No live customer writes or outbound messages. Supabase verification belongs to the dated prior release, not this letter edition.",
   "quotationVerification": "docs/QUOTATION-QA-v10.2.5.json",
+  "letterVerification": "docs/LETTER-QA-v10.2.3.json",
   "originalInlineSha256": "9a55b769fe4b56ab34bb7e7c548c3a5286d93afd92afb95194632885017bb655",
   "originalPdfVersion": "v27.4.22",
   "previousOfficeUiVerification": {

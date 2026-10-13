@@ -2,6 +2,7 @@
 import crypto from 'node:crypto';
 import { searchOfficeRows, prepareSearch } from './office-search.js';
 import { normalizeQuotation, QuoteError, decimal } from '../assets/quotation-model.js';
+import { normalizeLetter, LetterError } from '../assets/letter-model.js';
 import { PortalError, strictClientRows, verifyTransfer, possibleDuplicateTransfer, validateAttachment } from './portal-domain.js';
 import {
   batchGetSheets, getSheetValues, updateRow, appendRow, batchUpdateRows,
@@ -387,6 +388,7 @@ export async function searchRecords(options={}) {
 }
 
 export async function saveRecord(userEmail, entity, payload={}) {
+  if(entity==='letters'&&Object.hasOwn(payload,'letter_details'))return saveComposedLetter(userEmail,payload);
   const cfg=entityCfg(entity);
   const sheetNames=[cfg.sheet,'الإعدادات','التسلسلات','العملاء','الموردون','المشاريع'];
   if(entity==='purchases'||entity==='expenses') sheetNames.push('الحساب الشخصي');
@@ -436,6 +438,7 @@ export async function saveRecord(userEmail, entity, payload={}) {
     if(entity==='quotes'&&existing.deleted_at)throw new QuoteError('العرض محذوف ولا يمكن تعديله.','QUOTE_CONFLICT');
     if(detailed&&(payload.version===undefined||Number(payload.version)!==Number(existing.version||0)))throw new QuoteError('تغيّر العرض من نافذة أخرى. حمّل أحدث نسخة قبل الحفظ.','QUOTE_CONFLICT');
     if(entity==='quotes'&&existing.quote_details_json&&!detailed)throw new QuoteError('هذا عرض تفصيلي. حدّث صفحة المكتب واستخدم محرر عروض الأسعار الجديد.','QUOTE_CONFLICT');
+    if(entity==='letters'&&(existing.deleted_at||existing.letter_details_json))throw new LetterError('حدّث الصفحة واستخدم محرر الخطابات لفتح أحدث نسخة من الخطاب.','LETTER_CONFLICT');
     rowNum=existing.__row;
     const sentVersion=Number(payload.version||0), currentVersion=Number(existing.version||0);
     if(sentVersion&&currentVersion&&sentVersion!==currentVersion) throw new Error('تم تعديل السجل من جهاز آخر. حدّث الصفحة ثم أعد المحاولة.');
@@ -535,6 +538,52 @@ export async function getQuotationData(id='') {
   if(records.length>1)throw new QuoteError('مرجع العرض مكرر في المكتب.','QUOTE_CONFLICT');
   const record=records[0]?stripMeta(records[0]):null;
   return {record,clients,projects,company:pick(settings,['company_name','company_name_en','city','phone1','phone2','email1','email2','website','vat_no','unified_no','cr_no','address'])};
+}
+
+export async function getLetterData(id='') {
+  const all=await batchGetSheets(['العملاء','المشاريع','الإعدادات',...(id?['الخطابات']:[])]);
+  const pick=(r,keys)=>Object.fromEntries(keys.map(k=>[k,r[k]??'']));
+  const matches=id?rowsFromValues(all['الخطابات']).filter(r=>String(r.id)===String(id)):[];
+  if(matches.length>1)throw new LetterError('مرجع الخطاب مكرر؛ راجع السجلات قبل المتابعة.','LETTER_CONFLICT');
+  return {record:matches[0]?stripMeta(matches[0]):null,
+    clients:rowsFromValues(all['العملاء']).map(r=>pick(r,['id','client_no','name','contact_name','address'])),
+    projects:rowsFromValues(all['المشاريع']).map(r=>pick(r,['id','project_no','name','client_id'])),
+    company:pick(settingsFromValues(all['الإعدادات']),['company_name','company_name_en','city','phone1','email1','website','vat_no','unified_no'])};
+}
+
+async function saveComposedLetter(userEmail,payload) {
+  const requestId=String(payload.letter_request_id||'');
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))throw new LetterError('مرجع حفظ الخطاب غير صالح.');
+  const status=payload.status||'مسودة',doc=normalizeLetter(payload.letter_details,status);doc.request_id=requestId;
+  const all=await batchGetSheets(['الخطابات','العملاء','المشاريع']),rows=rowsFromValues(all['الخطابات'],true);
+  let headers=headersFromValues(all['الخطابات']);
+  if(!['id','letter_no','version'].every(k=>headers.includes(k)))throw new LetterError('أعمدة جدول الخطابات الأساسية غير متاحة؛ لم تتغير البيانات.','LETTER_CONFLICT');
+  const client=rowsFromValues(all['العملاء']).find(r=>String(r.id)===doc.client_id),project=rowsFromValues(all['المشاريع']).find(r=>String(r.id)===doc.project_id);
+  if(doc.client_id&&!client)throw new LetterError('العميل المرتبط بالخطاب غير موجود.');
+  if(doc.project_id&&(!project||doc.client_id&&String(project.client_id)!==doc.client_id))throw new LetterError('راجع المشروع وارتباطه بالعميل.');
+  const id=payload.id||requestId,matches=rows.filter(r=>String(r.id)===String(id));
+  if(matches.length>1)throw new LetterError('مرجع الخطاب مكرر في المكتب.','LETTER_CONFLICT');
+  const old=matches[0];if(old?.deleted_at)throw new LetterError('الخطاب محذوف ولا يمكن تعديله.','LETTER_CONFLICT');
+  const requests=rows.filter(r=>{try{return JSON.parse(r.letter_details_json||'null')?.request_id===requestId;}catch{return false;}});
+  if(requests.some(r=>String(r.id)!==String(id)))throw new LetterError('مرجع الحفظ مستخدم لخطاب آخر.','LETTER_CONFLICT');
+  if(old?.letter_details_json){let saved;try{saved=JSON.parse(old.letter_details_json);}catch{throw new LetterError('تعذر قراءة الخطاب الموجود؛ لم تتغير بياناته.','LETTER_CONFLICT');}
+    if(saved.request_id===requestId){if(JSON.stringify(saved)!==JSON.stringify(doc)||old.status!==status)throw new LetterError('مرجع الحفظ مستخدم لمحتوى مختلف.','LETTER_CONFLICT');return {ok:true,reconciled:true,record:stripMeta(old)};}}
+  if(payload.id&&(!old||payload.version===undefined||Number(old.version||0)!==Number(payload.version)))throw new LetterError('تغيّر الخطاب من نافذة أخرى. افتح أحدث نسخة قبل الحفظ.','LETTER_CONFLICT');
+  if(!payload.id&&old)throw new LetterError('مرجع الإنشاء موجود؛ تحقق من الخطاب المحفوظ.','LETTER_CONFLICT');
+  const number=old?.letter_no||`BL-${doc.date.slice(0,4)}-${requestId.replaceAll('-','').slice(0,12).toUpperCase()}`;
+  if(rows.some(r=>r.letter_no===number&&String(r.id)!==String(id)))throw new LetterError('رقم الخطاب موجود بالفعل.','LETTER_CONFLICT');
+  const preferred=doc.language==='en'?'en':'ar',other=preferred==='en'?'ar':'en';
+  const rec={...old,id,letter_no:number,date:doc.date,recipient:doc[`recipient_${preferred}`]||doc[`recipient_${other}`],subject:doc[`subject_${preferred}`]||doc[`subject_${other}`],letter_type:doc.letter_type,
+    project_id:doc.project_id,project_name:project?.name||'',status,notes:doc[`body_${preferred}`]||doc[`body_${other}`],letter_details_json:JSON.stringify(doc),
+    version:Number(old?.version||0)+1,created_at:old?.created_at||now(),updated_at:now(),deleted_at:''};
+  if(!headers.includes('letter_details_json')){
+    const latest=headersFromValues(await getSheetValues('الخطابات'));
+    if(latest.join('\u0000')!==headers.join('\u0000'))throw new LetterError('تغيرت أعمدة الخطابات؛ حدّث الصفحة قبل الحفظ.','LETTER_CONFLICT');
+    headers=[...headers,'letter_details_json'];await ensureColumnCapacity('الخطابات',headers.length);await updateRow('الخطابات',1,headers);
+  }
+  if(old)await updateRow('الخطابات',old.__row,rowValues(headers,rec));else await appendRow('الخطابات',rowValues(headers,rec));
+  await audit(userEmail,old?'update':'create','letters',id,rec.subject,rec);
+  return {ok:true,record:stripMeta(rec)};
 }
 
 export async function deleteRecord(userEmail,entity,id,version) {

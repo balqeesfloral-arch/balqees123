@@ -1,0 +1,100 @@
+{
+  "passed": true,
+  "date": "2026-10-13T11:55:07.555Z",
+  "widths": [
+    1440,
+    768,
+    390,
+    320
+  ],
+  "printedModes": [
+    "ar",
+    "en",
+    "both"
+  ],
+  "printPages": {
+    "ar": 1,
+    "en": 1,
+    "both": 1,
+    "legacy": 1,
+    "multipage": 7
+  },
+  "appends": 1,
+  "saveRequests": 2,
+  "bodyParagraphs": 3,
+  "multipageParagraphs": 18,
+  "originalAttachmentPreserved": true,
+  "privateNotesAbsentFromPrint": true,
+  "fontsAndBrandAssetsVerified": true,
+  "quotationAndClientSectionsVerified": true,
+  "pageErrors": [],
+  "letterEdition": "10.2.3",
+  "quotationEdition": "10.2.5",
+  "officeApplication": "26.3.0",
+  "websiteVersion": "10.50.0",
+  "unitTests": {
+    "website": 49,
+    "office": 24,
+    "failed": 0
+  },
+  "professionalTemplates": 4,
+  "browserChecks": [
+    "direct letter composition without file upload",
+    "client/project linking and custom recipients",
+    "four reviewed bilingual hotel templates",
+    "live paper preview inside bounds at 1440/768/390/320px",
+    "save confirmation lost then one append reconciled",
+    "current saved letter editing with version preservation",
+    "internal notes excluded from every print mode",
+    "three-paragraph Arabic/English/bilingual letters each fit one A4 page",
+    "decoded original high-resolution logo, signature and seal",
+    "loaded local Noto Naskh Arabic and DM Sans fonts",
+    "legacy letter text and existing attachment retained",
+    "18-paragraph bilingual long letter with complete paired paragraphs and numbered reference footers",
+    "quotation and customer sections still accessible",
+    "quotation studio browser regression passed",
+    "accounting and comprehensive website-link regressions passed",
+    "zero unhandled browser errors",
+    "Print waits for the selected-language document, fonts and brand images to finish loading"
+  ],
+  "visualReview": {
+    "allPagesInspected": true,
+    "pdfFiles": 5,
+    "totalPages": 11,
+    "shortLetterPages": {
+      "ar": 1,
+      "en": 1,
+      "both": 1,
+      "legacy": 1
+    },
+    "longLetterPages": 7,
+    "longLetterParagraphsPerLanguage": 18,
+    "completeEnglishParagraphEndingsVerified": 18,
+    "noClippingObserved": true,
+    "footerPageNumbersAndReferenceVerified": true
+  },
+  "storageVerification": {
+    "mockGoogle": true,
+    "newColumns": 1,
+    "newColumnName": "letter_details_json",
+    "driveUploadsForComposition": 0,
+    "existingAttachmentsPreserved": true,
+    "staleVersionRejected": true,
+    "identicalRequestReconciled": true,
+    "englishListFieldsUseEnglishContent": true,
+    "unrelatedRowsPreserved": true
+  },
+  "buildPassed": true,
+  "sourceVerificationPassed": true,
+  "testIsolation": "Browser APIs and Google calls use fixtures. No live customer letters, ledger writes, outbound messages or Supabase changes.",
+  "originalInlineSha256": "9a55b769fe4b56ab34bb7e7c548c3a5286d93afd92afb95194632885017bb655",
+  "originalStatementPdfVersion": "v27.4.22",
+  "translation": "Template wording is provided professionally in both languages. Names and custom letter text require explicit entry and review; no automatic translation is claimed.",
+  "limitations": [
+    "Sent status records Office follow-up; it does not transmit external messages.",
+    "Enclosure names are printed references; files are attached when the user sends the letter.",
+    "Files uploaded previously are preserved; OCR/import of their body is not performed.",
+    "Google Sheets has no atomic compare-and-swap transaction; simultaneous edits require operator coordination.",
+    "Existing Drive ownership and service-account storage requirements remain unchanged for legacy uploads."
+  ]
+}

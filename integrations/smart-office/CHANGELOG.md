@@ -1,3 +1,13 @@
+# Letter Studio v10.2.3 — 2026-10-13
+
+Rebuilt the Office letters section for direct composition with live preview, draft/ready/sent/closed status, optional client/project mapping, correspondence references, recipient and department, subject, paragraphs, salutation, closing, signatory details, named enclosures and copy recipients. Four professional Arabic/English hotel correspondence templates provide starting text; custom translations are entered and reviewed explicitly. Internal notes are stored separately and excluded from printing.
+
+Added classical A4 Arabic, English and bilingual letterheads using the existing original Balqees logo, signature and seal and local licensed fonts. Multi-page letters retain complete paragraphs and page/reference footers. Print through the browser to paper or PDF. Marking a letter as sent records its status; it does not send external messages.
+
+Composition adds one `letter_details_json` field to the existing Google letters sheet on first save. The API validates content and record links, rejects stale edits, preserves old attachments, and reconciles an identical request after a lost save confirmation. Letters can be created without uploading to Drive. Existing Drive attachment requirements remain unchanged.
+
+Letter edition: 10.2.3. Quotation edition: 10.2.5. Office application: 26.3.0. Website: 10.50.0. Original statement/PDF v27.4.22 remains byte-identical. Verification is recorded in `docs/LETTER-QA-v10.2.3.json`.
+
 # Quotation Studio v10.2.5 — 2026-10-12
 
 Rebuilt the Office quotations page as a restrained olive-and-gold professional workspace. The editor supports up to 50 independent product/service lines, bilingual specifications and units, fractional quantities, per-line discounts and VAT, VAT-inclusive/exclusive pricing, validity, conditions and notes. Follow-up dates and closing probabilities remain internal.

@@ -13,7 +13,8 @@
     "test:admin": "node scripts/verify-admin-ui.mjs",
     "test:accounting": "node scripts/verify-accounting-ui.mjs",
     "test:office-link": "node scripts/verify-office-link-ui.mjs",
-    "test:quotations": "node scripts/verify-quotation-studio.mjs"
+    "test:quotations": "node scripts/verify-quotation-studio.mjs",
+    "test:letters": "node scripts/verify-letter-studio.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.116.0",
